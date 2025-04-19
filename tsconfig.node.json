@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "CommonJS",
+    "types": ["node"],
+    "checkJs": false
+  },
+  "include": [
+    "vite.config.ts",
+    "tailwind.config.ts",
+    "**/*.config.*",
+    "scripts/**/*"
+  ]
+}

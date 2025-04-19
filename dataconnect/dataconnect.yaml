@@ -1,0 +1,12 @@
+specVersion: "v1beta"
+serviceId: "bitebuzz-hub"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "postgres"
+      cloudSql:
+        instanceId: "e-food-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]

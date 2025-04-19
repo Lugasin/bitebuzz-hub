@@ -1,0 +1,17 @@
+{
+    "name": "E-eats IDE",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "context": ".."
+    },
+    "workspaceFolder": "/workspace",
+    "forwardPorts": [3000],
+    "settings": {
+      "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "extensions": [
+      "dbaeumer.vscode-eslint"
+    ],
+    "postCreateCommand": "npm install"
+  }
+  
