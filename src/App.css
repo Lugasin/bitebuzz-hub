@@ -1,10 +1,29 @@
+body {
+  min-height: 100vh;
+}
+body {
+  min-height: 100vh;
+}
+
 #root {
-  max-width: 1280px;
+  
   margin: 0 auto;
-  padding: 2rem;
   text-align: center;
 }
 
+.card-login{
+  background: rgba(255, 255, 255, 0.7); /* White with 70% opacity */
+  backdrop-filter: blur(10px); /* Add a blur effect */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow */
+}
+
+.login-page-container{
+  --login-bg-fallback: url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+  background-image: url('/login-bg.jpg'), var(--login-bg-fallback);
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+}
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -33,10 +52,10 @@
   }
 }
 
-.card {
-  padding: 2em;
-}
-
 .read-the-docs {
   color: #888;
+}
+/* Optional: Adjust text color for readability */
+.card-login .text-muted-foreground {
+    color: #333; /* Darken the text color */
 }

@@ -1,45 +1,44 @@
 
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useRef } from "react";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { InputOTP } from "@/components/ui/input-otp";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, UserPlus, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Lock, User, ArrowLeft, Phone } from "lucide-react";
 import { BurgerIcon } from "@/components/ui/icons";
+import { auth } from "@/lib/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 
 const Register = () => {
-  const { register, loginWithGoogle } = useAuth();
+  const { loginWithGoogle, isLoading : authIsLoading, isAuthenticated, userRole } = useAuth();
   const navigate = useNavigate();
   
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    accountType: "customer",
-    termsAccepted: false
-  });
+  const [formData, setFormData] = useState({name: {firstName: '', lastName: ''}, phone: '', verificationCode: '', accountType: 'customer', termsAccepted: false});
+  const [isCodeSent, setIsCodeSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState(null);
   
-  const [showPassword, setShowPassword] = useState({
-    password: false,
-    confirmPassword: false
-  });
-  
-  const [isLoading, setIsLoading] = useState(false);
+  const recaptchaContainer = useRef(null);
   
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
+    if (name === "phone" && value.length > 10) {
+      return;
+    }
+    setFormData(prev => {
+      if (name === "firstName" || name === "lastName") {
+        return {...prev, name: {...prev.name, [name]: value}}
+      } else {
+        return {...prev, [name]: type === "checkbox" ? checked : value}
+      }
+      
+    });
   };
   
   const handleAccountTypeChange = (value) => {
@@ -49,33 +48,31 @@ const Register = () => {
     }));
   };
   
-  const toggleShowPassword = (field) => {
-    setShowPassword(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
-  
   const validateForm = () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.name.firstName || !formData.name.lastName || !formData.phone) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields.",
         variant: "destructive"
       });
       return false;
-    }
+    }    
     
-    if (formData.password.length < 8) {
+    if (!/^\d{10}$/.test(formData.phone)) {
+      
       toast({
-        title: "Password too short",
-        description: "Password must be at least 8 characters long.",
+        title: "Invalid phone number",
+        description: "Please enter a valid 10-digit phone number.",
         variant: "destructive"
       });
       return false;
     }
     
-    if (formData.password !== formData.confirmPassword) {
+    if (isCodeSent && !formData.verificationCode) {
+      toast({
+        title: "Missing verification code",
+        description: "Please enter the verification code.",
+      });
       toast({
         title: "Passwords don't match",
         description: "Please ensure both passwords match.",
@@ -100,48 +97,76 @@ const Register = () => {
     e.preventDefault();
     
     if (!validateForm()) return;
+
+    if (!isCodeSent) {
+      handleSendCode();
+    } else {
+      handleVerifyCode();
+    }
+  };
+
+  const handleSendCode = async () => {
+    try {
+      if (!recaptchaContainer.current) {
+        window.recaptchaVerifier = new RecaptchaVerifier(recaptchaContainer.current, {
+          'size': 'invisible',
+          'callback': () => {}
+        }, auth);
+      }
+      
+      const appVerifier = window.recaptchaVerifier;
+      const confirmationResult = await signInWithPhoneNumber(auth, `+1${formData.phone}`, appVerifier);
+      
+      setConfirmationResult(confirmationResult);
+      setIsCodeSent(true);
+      toast({
+        title: "Verification code sent",
+        description: "Please check your phone for the verification code.",
+        variant: "success"
+      });
+    } catch (error) {
+      toast({
+        title: "Error sending code",
+        description: error.message || "An error occurred while sending the verification code.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!confirmationResult) return;
     
     try {
-      setIsLoading(true);
+      const result = await confirmationResult.confirm(formData.verificationCode);
+      const credential = result.user
       
-      // Create user with the chosen account type (role)
-      await register(
-        formData.email, 
-        formData.password, 
-        `${formData.firstName} ${formData.lastName}`, 
-        formData.accountType
-      );
-      
-      navigate("/");
       
       toast({
         title: "Account created",
-        description: "Your account has been created successfully.",
+        description: "Account created successfully.",
+        variant: "success"
       });
-    } catch (error) {
-      let errorMessage = "An error occurred during registration.";
-      
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "Email is already in use.";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email format.";
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "Password is too weak.";
+      if (userRole === "customer"){      
+        navigate("/");
+      }else if(userRole === "vendor"){
+        navigate("/vendor");
+      }else if(userRole === "delivery"){
+        navigate("/delivery");
       }
+    } catch (error) {
+      console.error(error)
       
       toast({
+        
         title: "Registration failed",
-        description: errorMessage,
+        description: error.message || "An error occurred during registration.",
         variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      });      
     }
-  };
+  }
   
   const handleGoogleRegister = async () => {
     try {
-      setIsLoading(true);
       await loginWithGoogle(formData.accountType);
       navigate("/");
       toast({
@@ -154,10 +179,14 @@ const Register = () => {
         description: "An error occurred during Google registration.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
-    }
+    } 
   };
+  if (isAuthenticated){
+    if(userRole === "customer")return <Navigate to="/"/>
+    if(userRole === "vendor")return <Navigate to="/vendor"/>
+    if(userRole === "delivery")return <Navigate to="/delivery"/>
+  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -197,11 +226,11 @@ const Register = () => {
                       name="firstName"
                       placeholder="John"
                       className="pl-10"
-                      value={formData.firstName}
+                      value={formData.name.firstName}
                       onChange={handleChange}
-                      disabled={isLoading}
+                      disabled={authIsLoading}
                     />
-                  </div>
+                 </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
@@ -212,89 +241,56 @@ const Register = () => {
                       name="lastName"
                       placeholder="Doe"
                       className="pl-10"
-                      value={formData.lastName}
+                      value={formData.name.lastName}
                       onChange={handleChange}
-                      disabled={isLoading}
+                      disabled={authIsLoading}
                     />
                   </div>
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-2" >
+                <Label htmlFor="phone">Phone Number</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="john.doe@example.com"
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="Enter your phone number"
                     className="pl-10"
-                    value={formData.email}
+                    value={formData.phone}
                     onChange={handleChange}
-                    disabled={isLoading}
+                    disabled={authIsLoading}
                   />
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword.password ? "text" : "password"}
-                    placeholder="At least 8 characters"
-                    className="pl-10"
-                    value={formData.password}
-                    onChange={handleChange}
-                    disabled={isLoading}
+              {isCodeSent ? (
+                <div className="space-y-2">
+                  <Label htmlFor="verificationCode">Verification Code</Label>
+                  <InputOTP
+                    length={6}
+                    id="verificationCode"
+                    name="verificationCode"
+                    value={formData.verificationCode}
+                    onChange={(value) => setFormData(prev => ({ ...prev, verificationCode: value }))}
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full"
-                    onClick={() => toggleShowPassword("password")}
-                    disabled={isLoading}
-                  >
-                    {showPassword.password ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showPassword.confirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    className="pl-10"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full"
-                    onClick={() => toggleShowPassword("confirmPassword")}
-                    disabled={isLoading}
-                  >
-                    {showPassword.confirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
+              ) : null}
+                {!isCodeSent ?(
+                <div className="w-full">
+                    <Button type="button" onClick={handleSendCode} className="w-full" disabled={isCodeSent || authIsLoading}>
+                      Send Code
+                    </Button>
+                  </div>
+                ):null}
+              <div ref={recaptchaContainer}></div>
               
               <div className="space-y-2">
                 <Label>Account Type</Label>
                 <RadioGroup
-                  value={formData.accountType}
+                  name = "accountType"
                   onValueChange={handleAccountTypeChange}
                   className="flex flex-col space-y-1"
                 >
@@ -318,9 +314,8 @@ const Register = () => {
                   id="termsAccepted"
                   name="termsAccepted"
                   checked={formData.termsAccepted}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({ ...prev, termsAccepted: checked }))}
-                  disabled={isLoading}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, termsAccepted: checked }))}
+                  disabled={authIsLoading}
                 />
                 <Label htmlFor="termsAccepted" className="text-sm leading-snug">
                   I agree to the{" "}
@@ -336,14 +331,14 @@ const Register = () => {
               
               <Button
                 type="submit"
-                className="w-full"
-                disabled={isLoading}
+                className="w-full mt-4"
+                disabled={authIsLoading}
               >
-                {isLoading ? (
+                {authIsLoading ? (
                   <span className="flex items-center">
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                     </svg>
                     Creating account...
                   </span>
@@ -370,7 +365,7 @@ const Register = () => {
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleRegister}
-                disabled={isLoading}
+                disabled={authIsLoading}
               >
                 <svg viewBox="0 0 48 48" className="h-5 w-5 mr-2">
                   <path
@@ -394,7 +389,7 @@ const Register = () => {
               </Button>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-center">
+          <CardFooter className="flex justify-center mt-4">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link to="/login" className="text-primary hover:underline font-medium">
@@ -407,5 +402,4 @@ const Register = () => {
     </div>
   );
 };
-
 export default Register;

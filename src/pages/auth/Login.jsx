@@ -1,105 +1,110 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useRef } from "react";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, LogIn, ArrowLeft } from "lucide-react";
 import { BurgerIcon } from "@/components/ui/icons";
 
 const Login = () => {
-  const { login, loginWithGoogle } = useAuth();
+  const { loginWithPhoneNumber, loginWithGoogle, isLoading, isAuthenticated, userRole, sendCode } = useAuth();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: ""
-  });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-  
-  const toggleShowPassword = () => {
-    setShowPassword(prev => !prev);
-  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const [formData, setFormData] = useState({
+    phoneNumber: "",
+    code: "",
+  });
 
-    if (!formData.email || !formData.password) {
+  const [showCodeInput, setShowCodeInput] = useState(false);
+
+  const sendVerificationCode = async () => {
+    if (!formData.phoneNumber) {
       toast({
-        title: "Missing information",
-        description: "Please fill in all fields.",
-        variant: "destructive"
+        title: "Missing Information",
+        description: "Please enter your phone number.",
+        variant: "destructive",
       });
       return;
     }
-
     try {
-      setIsLoading(true);
-      console.log("Attempting login with:", formData.email);
-      await login(formData.email, formData.password);
-      console.log("Login successful");
-      navigate("/");
+      await sendCode(formData.phoneNumber);
+      setShowCodeInput(true);
       toast({
-        title: "Welcome back!",
-        description: "You have been logged in successfully.",
+        title: "Code Sent",
+        description: "A verification code has been sent to your phone number.",
       });
     } catch (error) {
-      console.error("Login error:", error);
-      let errorMessage = "An error occurred during login.";
-      if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email format.";
-      } else if (error.code === "auth/user-disabled") {
-        errorMessage = "This account has been disabled.";
-      } else if (error.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email.";
-      } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password.";
-      }
       toast({
-        title: "Login failed",
-        description: errorMessage,
-        variant: "destructive"
+        title: "Error Sending Code",
+        description: "There was an error sending the verification code.",
+        variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setIsLoading(true);
-      console.log("Initiating Google login");
-      await loginWithGoogle();
-      console.log("Google login successful");
-      navigate("/");
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (!formData.phoneNumber || !formData.code) {
       toast({
-        title: "Welcome!",
-        description: "You have logged in with Google successfully.",
+        title: "Missing Information",
+        description: "Please enter your phone number and verification code.",
+        variant: "destructive",
       });
+      return;
+    }
+    try {
+      await loginWithPhoneNumber(formData.phoneNumber, formData.code);
+      // Navigation logic after successful login based on userRole
+      navigate("/");
+      // if (userRole === "customer") {
+      //   navigate("/");
+      // } else if (userRole === "vendor") {
+      //   navigate("/vendor");
+      // } else if (userRole === "delivery") {
+      //   navigate("/delivery");
+      // } else {
+      //   // Default navigation if userRole is unexpected or null
+      //   navigate("/");
+      // }
     } catch (error) {
-      console.error("Google login error:", error);
+      console.error("Login error:", error); // Added a prefix for clarity
+
       toast({
         title: "Login failed",
-        description: "An error occurred during Google login.",
-        variant: "destructive"
+        description: error.message,
+        variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  if (isAuthenticated) {
+    navigate("/");
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Link to="/" className="absolute top-4 left-4 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+      <Link
+        to="/"
+        className="absolute top-4 left-4 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+      >
         <ArrowLeft className="h-4 w-4" />
         Back to Home
       </Link>
@@ -117,101 +122,120 @@ const Login = () => {
           </div>
           <p className="text-muted-foreground">Sign in to your account</p>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl text-center">Login</CardTitle>
-            <CardDescription className="text-center">Enter your credentials to access your account</CardDescription>
+            <CardDescription className="text-center">
+              Enter your phone number to login
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  placeholder="Your phone number"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+              </div>
+
+              {showCodeInput && (
+                <div className="space-y-2">
+                  <Label htmlFor="code">Verification Code</Label>
+
+                
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Your email"
-                    className="pl-10"
-                    value={formData.email}
+                    id="code"
+                    name="code"
+                    type="text"
+                    placeholder="Verification code"
+                    value={formData.code}
                     onChange={handleChange}
                     disabled={isLoading}
                   />
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-                    Forgot Password?
-                  </Link>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Your password"
-                    className="pl-10"
-                    value={formData.password}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full"
-                    onClick={toggleShowPassword}
-                    disabled={isLoading}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              
+              )}
+
+              {!showCodeInput && (
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={sendVerificationCode}
+                  disabled={isLoading}
+                >
+                  Send Code
+                </Button>
+              )}
+
               <Button
                 type="submit"
                 className="w-full"
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <span className="flex items-center justify-center">
+                    {" "}
+                    {/* Added justify-center */}
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
-                    Logging in...
+                    Signing in...
                   </span>
                 ) : (
-                  <span className="flex items-center">
+                  <span className="flex items-center justify-center"> {/* Added justify-center */}
                     <LogIn className="mr-2 h-4 w-4" />
                     Sign In
                   </span>
                 )}
               </Button>
             </form>
-            
+
             <div className="mt-6 relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
+              <div
+                className="relative flex justify-center text-xs uppercase"
+              >
                 <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
-            
+
             <div className="mt-6">
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={handleGoogleLogin}
+                onClick={loginWithGoogle}
                 disabled={isLoading}
               >
+                {/*  */}
+
+
                 <svg viewBox="0 0 48 48" className="h-5 w-5 mr-2">
                   <path
                     fill="#FFC107"
@@ -233,17 +257,20 @@ const Login = () => {
                 Sign in with Google
               </Button>
             </div>
-          </CardContent>
+             </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link to="/register" className="text-primary hover:underline font-medium">
+              <Link
+                to="/register"
+                className="text-primary hover:underline font-medium"
+              >
                 Sign up
-              </Link>
+               </Link>
             </p>
           </CardFooter>
         </Card>
-        
+
         <div className="mt-6 text-center">
           <Link to="/guest-order" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Continue as guest
@@ -253,5 +280,6 @@ const Login = () => {
     </div>
   );
 };
+
 
 export default Login;

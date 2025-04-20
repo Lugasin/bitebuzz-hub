@@ -18,6 +18,7 @@ import {
 import { motion } from "framer-motion";
 import { useCart } from "@/context/CartContext";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 import FoodCard from "@/components/home/FoodCard";
 
 // Restaurant details (mock)
@@ -167,6 +168,8 @@ const RestaurantDetails = () => {
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   
+  const { isAuthenticated } = useAuth();
+
   // Fetch restaurant and menu data
   useEffect(() => {
     // In a real app, this would be an API call
@@ -196,6 +199,22 @@ const RestaurantDetails = () => {
   const filteredMenuItems = activeCategory === "all" 
     ? menuItems 
     : menuItems.filter(item => item.category === activeCategory);
+
+  const handleAddToCart = (menuItem) => {
+    if (!isAuthenticated) {
+      // User is not logged in, prompt them
+      toast({
+        title: "Login Required",
+        description: "Please log in or sign up to add items to your cart.",
+        variant: "info", // Or "default"
+      });
+      // Optionally redirect: navigate('/login'); but a toast is often better for less interruption
+      return; // Stop the function here
+    }
+
+    // If authenticated, proceed to add item to cart
+
+  };
 
   const handleItemClick = (item) => {
     setSelectedItem(item);
@@ -302,6 +321,7 @@ const RestaurantDetails = () => {
                     key={item.id} 
                     item={item} 
                     onCustomize={handleItemClick}
+                    onAddToCart={()=>handleAddToCart(item)}
                   />
                 ))}
               </div>

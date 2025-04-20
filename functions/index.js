@@ -1,19 +1,41 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+// This is the entry point of the E-eats API using Node.js and Express.js
+const express = require('express');
+const pool = require('./src/config/database');
+const { admin } = require('./src/config/firebase');
+const verifyToken = require('./src/middlewares/auth');
+const userRoutes = require('./src/modules/users/userRoutes');
+const restaurantRoutes = require('./src/modules/restaurants/restaurantRoutes');
+const orderRoutes = require('./src/modules/orders/orderRoutes');
+const authRoutes = require('./src/modules/auth/authRoutes');
 
-const {onRequest} = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
+const app = express();
+const port = 3000;
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+// Global Middlewares
+app.use(express.json());
+app.use((req, res, next) => {
+    console.log('Main middleware called');
+    next();
+});
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+
+// Auth Routes (No Auth Middleware)
+app.use('/auth', authRoutes);
+
+// Protected Routes (Require Auth Middleware)
+app.use(verifyToken); // Apply to all routes below this line
+
+app.use('/users', userRoutes);
+app.use('/restaurants', restaurantRoutes);
+app.use('/orders', orderRoutes);
+
+// Root Route
+app.get('/', (req, res) => {
+    console.log('Root route handler called');
+    res.json({ status: 'ok', message: 'E-eats API is working' });
+});
+
+// Start the server
+app.listen(port, () => {
+    console.log(`E-eats API listening at http://localhost:${port}`);
+});

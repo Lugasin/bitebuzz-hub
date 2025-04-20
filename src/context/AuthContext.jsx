@@ -5,18 +5,20 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-  onAuthStateChanged,
+  onAuthStateChanged, 
   updateProfile,
-  RecaptchaVerifier,
-  signInWithPhoneNumber
+  RecaptchaVerifier, 
+  signInWithPhoneNumber, 
 } from "firebase/auth";
 import { auth, googleProvider, facebookProvider } from "@/lib/firebase";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
+import useApi from "@/hooks/useApi";
+import { useUser } from "./UserContext.tsx";
 
 // Create the AuthContext
-const AuthContext = createContext(undefined);
+const AuthContext = createContext();
 
 // Custom hook to use the auth context
 export const useAuth = () => {
@@ -30,20 +32,26 @@ export const useAuth = () => {
 // AuthProvider Component
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [userRole, setUserRole] = useState("guest");
-  const [isLoading, setIsLoading] = useState(true);
+  const [userRole, setUserRole] = useState('guest');
+  const { setUser } = useUser();
+ const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { apiRequest } = useApi();
+
+  
 
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      if (user) {
+     if (user) {
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists()) {
-            // Assume role is stored as "role" in the user document
-            setUserRole(userDoc.data().role);
+         if (userDoc.exists()) {
+             const userData = userDoc.data();
+             setUser(userData);
+             // Assume role is stored as "role" in the user document
+            setUserRole(userData.role);
           } else {
             setUserRole("customer"); // Default role if no document exists
           }
@@ -52,9 +60,9 @@ export const AuthProvider = ({ children }) => {
           setUserRole("customer");
         }
       } else {
-        setUserRole("guest");
+        setUserRole('guest');
       }
-      setIsLoading(false);
+     setIsLoading(false);
     });
 
     return unsubscribe;
@@ -62,7 +70,7 @@ export const AuthProvider = ({ children }) => {
 
   // Helper function to create a new user profile in Firestore.
   const createUserProfile = async (user, name, role) => {
-    const userRef = doc(db, "users", user.uid);
+    const userRef = doc(db, 'users', user.uid);
     // Update the Firebase Auth displayName if a name is provided.
     if (name) {
       await updateProfile(user, { displayName: name });
@@ -72,7 +80,7 @@ export const AuthProvider = ({ children }) => {
     if (!userSnapshot.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
-        displayName: name || user.displayName,
+         displayName: name || user.displayName,
         email: user.email,
         phoneNumber: user.phoneNumber,
         photoURL: user.photoURL,
@@ -83,76 +91,123 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Email/Password login function.
-  const signInWithEmail = async (email, password) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
+   // Email/Password login function.
+  const login = async (email, password) => {
+   try {
+      const response = await apiRequest("http://localhost:3000/auth/login", "POST", {
+        email,
+       password,
+      });
+     if (response.token) {
+       localStorage.setItem("token", response.token);
+      }
+     
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        email,
+        password
+      );
+      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUser(userData);
+        setUserRole(userData.role);
+      }
       toast({
-        title: "Welcome back!",
-        description: "You've successfully signed in.",
+        title: "Welcome!",
+        description: "You have been logged in successfully.",
       });
     } catch (error) {
-      toast({
+      console.error("Login error:", error);
+      let errorMessage = "An error occurred during login.";
+     if (error.message === "User not found") {
+        errorMessage = "No account found with this email."; 
+      } else if (error.message === "Invalid credentials") {
+        errorMessage = "Incorrect password."; 
+      }
+       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign in",
-      });
-      throw error;
+         title: "Error",
+         description: errorMessage,
+       });
+
+     throw error;
     }
   };
-
+   
   // Email/Password sign-up function.
-  const signUpWithEmail = async (email, password, name, role = "customer") => {
+  const signUpWithEmail = async (email, password, name, role = 'customer') => {
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(result.user, name, role);
-      toast({
-        title: "Account created",
-        description: "Your account has been created successfully!",
-      });
+       const response = await apiRequest("/auth/register", "POST", {
+         name,
+         email,
+         password,
+       });
+       const result = await createUserWithEmailAndPassword(auth, email, password);
+       await createUserProfile(result.user, name, role);
+       toast({
+
+         title: "Account created",
+         description: "Your account has been created successfully!",
+       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to create account",
+       console.error("Registration error:", error);
+       let errorMessage = "An error occurred during registration.";
+      if (error.message === "Email is already in use.") {
+        errorMessage = "Email is already in use.";
+      } else if (error.message === "Invalid email format.") {
+        errorMessage = "Invalid email format.";
+      } else if (error.message === "Password is too weak.") { 
+        errorMessage = "Password is too weak.";
+     }
+       toast({
+         variant: "destructive",
+         title: "Error",
+        description: error.message || 'Failed to create account',
       });
       throw error;
     }
   };
 
   // Google login using popup.
-  const signInWithGoogle = async () => {
-    try {
+  const loginWithGoogle = async (accountType = "customer") => {
+   try {
       const result = await signInWithPopup(auth, googleProvider);
-      await createUserProfile(result.user, result.user.displayName || "", "customer");
+      await createUserProfile(
+        result.user,
+        result.user.displayName || "",
+       accountType
+      );
       toast({
         title: "Success",
-        description: "Signed in with Google successfully!",
       });
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign in with Google",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to sign in with Google',
       });
       throw error;
     }
   };
+
+
+
 
   // Facebook login using popup.
   const signInWithFacebook = async () => {
     try {
       const result = await signInWithPopup(auth, facebookProvider);
       await createUserProfile(result.user, result.user.displayName || "", "customer");
-      toast({
+     toast({
         title: "Success",
         description: "Signed in with Facebook successfully!",
       });
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign in with Facebook",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to sign in with Facebook',
       });
       throw error;
     }
@@ -162,26 +217,26 @@ export const AuthProvider = ({ children }) => {
   const guestLogin = async (guestData) => {
     try {
       const guestUser = {
-        uid: "guest-" + Math.random().toString(36).substring(2, 9),
+        uid: 'guest-' + Math.random().toString(36).substring(2, 9),
         displayName: guestData.displayName || "Guest User",
         email: guestData.email || null,
         phoneNumber: guestData.phoneNumber || null,
-        photoURL: null,
+       photoURL: null,
         isAnonymous: true,
       };
 
       setCurrentUser(guestUser);
-      setUserRole("guest");
+      setUserRole('guest');
       toast({
-        title: "Guest access granted",
-        description: "You can now place orders as a guest.",
+        title: 'Guest access granted',
+        description: 'You can now place orders as a guest.',
       });
       return guestUser;
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to continue as guest",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to continue as guest',
       });
       throw error;
     }
@@ -189,12 +244,12 @@ export const AuthProvider = ({ children }) => {
 
   // Set up ReCAPTCHA for phone number login.
   const setupRecaptcha = (phoneNumber) => {
-    // Note: Ensure there's a div with id "recaptcha-container" rendered in your component.
+    // Note: Ensure there's a div with id 'recaptcha-container' rendered in your component.
     const recaptchaVerifier = new RecaptchaVerifier(
       auth,
-      "recaptcha-container",
+      'recaptcha-container',
       {
-        size: "normal",
+        size: 'normal', 
         callback: () => {
           // reCAPTCHA solved, allow signInWithPhoneNumber.
         }
@@ -208,18 +263,18 @@ export const AuthProvider = ({ children }) => {
   const verifyOTP = async (confirmationResult, otp) => {
     try {
       const result = await confirmationResult.confirm(otp);
-      const user = result.user;
-      await createUserProfile(user, "Guest User", "guest");
-      toast({
-        title: "Phone verified",
-        description: "You can now place your order as a guest.",
+      const user = result.user; 
+      await createUserProfile(user, 'Guest User', 'guest');
+     toast({
+        title: 'Phone verified',
+        description: 'You can now place your order as a guest.',
       });
       return user;
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to verify OTP",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to verify OTP',
       });
       throw error;
     }
@@ -229,15 +284,15 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (email) => {
     try {
       await sendPasswordResetEmail(auth, email);
-      toast({
-        title: "Password reset email sent",
-        description: "Check your email for password reset instructions.",
+     toast({
+        title: 'Password reset email sent',
+        description: 'Check your email for password reset instructions.',
       });
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to send password reset email",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to send password reset email',
       });
       throw error;
     }
@@ -247,15 +302,15 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      toast({
-        title: "Signed out",
-        description: "You've been signed out successfully.",
+     toast({
+        title: 'Signed out',
+        description: 'You\'ve been signed out successfully.',
       });
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign out",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to sign out',
       });
       throw error;
     }
@@ -265,16 +320,16 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userRole,
-    isLoading,
-    signInWithGoogle,
-    signInWithFacebook,
-    signInWithEmail,
+   isLoading,
+    loginWithGoogle,
+   signInWithFacebook,
+    login,
     signUpWithEmail,
     guestLogin,
-    setupRecaptcha,
+   setupRecaptcha,
     verifyOTP,
-    resetPassword,
-    logout,
+   resetPassword,
+   logout,
     isAuthenticated: !!currentUser,
   };
 

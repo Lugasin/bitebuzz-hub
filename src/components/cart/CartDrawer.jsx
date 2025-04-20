@@ -16,6 +16,7 @@ import {
   Store,
   CornerDownRight
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 
 const CartDrawer = () => {
@@ -32,8 +33,20 @@ const CartDrawer = () => {
     setDeliveryOption
   } = useCart();
   const { isAuthenticated } = useAuth();
-  
-  // Get grouped items by restaurant
+
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login Required",
+        description: "Please log in or sign up to proceed to checkout.",
+        variant: "info",
+      });      
+    }
+    
+  };
+
+
+   // Get grouped items by restaurant
   const groupedItems = getGroupedItems();
   const multipleRestaurants = Object.keys(groupedItems).length > 1;
 
@@ -72,14 +85,14 @@ const CartDrawer = () => {
               {/* Delivery Method Selection */}
               <div className="bg-muted/30 p-4 rounded-lg">
                 <h3 className="font-medium mb-3">Choose delivery method:</h3>
-                <RadioGroup 
+                <RadioGroup
                   defaultValue={deliveryMethod} 
                   onValueChange={setDeliveryOption}
                   className="flex gap-4"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="delivery" id="delivery" />
-                    <Label htmlFor="delivery" className="flex items-center gap-1">
+                    <Label htmlFor="delivery" className="flex items-center gap-1" >
                       <Truck className="h-4 w-4" />
                       <span>Delivery</span>
                     </Label>
@@ -154,17 +167,19 @@ const CartDrawer = () => {
               </div>
               
               <div className="mt-4 space-y-2">
-                <Button 
-                  className="w-full" 
-                  asChild
-                >
-                  <Link to={isAuthenticated ? "/checkout" : "/login?redirect=checkout"}>
-                    Proceed to Checkout
+                {isAuthenticated ? (
+                  <Link to="/customer/checkout">
+                    <Button className="w-full">Proceed to Checkout</Button>
                   </Link>
-                </Button>
-                
+                ) : (
+                  <Link to="/login?redirect=customer/checkout">
+                     <Button
+                    className="w-full"
+                    onClick={handleCheckout}>Proceed to Checkout</Button>
+                  </Link>
+                )}
                 <Button 
-                  variant="outline" 
+                  variant="outline"
                   className="w-full"
                   onClick={clearCart}
                 >
