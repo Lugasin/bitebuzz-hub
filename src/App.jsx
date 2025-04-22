@@ -23,6 +23,8 @@ import Checkout from "./pages/customer/Checkout";
 import OrderHistory from "./pages/customer/OrderHistory";
 import OrderDetails from "./pages/customer/OrderDetails";
 import Profile from "./pages/customer/Profile";
+import EditProfile from "./pages/customer/EditProfile";
+import DeleteProfile from "./pages/customer/DeleteProfile";
 
 // Advanced features
 import MealPlanningPage from "./pages/mealplanning/Index";
@@ -92,6 +94,8 @@ const App = () => (
                     <Route path="orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
                     <Route path="order/:id" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
                     <Route path="dashboard" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
+                    <Route path="edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+                    <Route path="delete-profile" element={<ProtectedRoute><DeleteProfile /></ProtectedRoute>} />
                   </Route>
                   
                   

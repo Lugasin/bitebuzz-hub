@@ -1,11 +1,13 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, Separator } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Truck, Clock, DollarSign, MapPin, TrendingUp, User, Calendar } from "lucide-react";
+import { useAuth } from '@/context/AuthContext';
+import { DeliveryDriver } from '@/models/deliveryDriver';
 
 const DeliveryDashboard = () => {
   // Sample data for the delivery dashboard
@@ -76,7 +78,31 @@ const DeliveryDashboard = () => {
     month: "$3,240.25"
   };
   
+    const { currentUser } = useAuth();
+    const [deliveryDriver, setDeliveryDriver] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchDeliveryDriver = async () => {
+            try {
+                setLoading(true);
+                const deliveryDriverData = await DeliveryDriver.getDeliveryDriverByFirebaseUid(currentUser.uid);
+                setDeliveryDriver(deliveryDriverData);
+                console.log('Delivery driver data fetched successfully:', deliveryDriverData);
+            } catch (error) {
+                setError(error.message);
+                console.error('Error fetching delivery driver data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDeliveryDriver();
+    }, [currentUser]);
+
   return (
+    
     <div className="container mx-auto px-4 py-8 pt-20">
       <h1 className="text-3xl font-bold mb-6">Delivery Dashboard</h1>
       

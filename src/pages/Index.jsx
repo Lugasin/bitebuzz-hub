@@ -1,7 +1,8 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import HeroCarousel from "@/components/home/HeroCarousel";
+import { useAuth } from "@/context/AuthContext";
 import QuickBuyAds from "@/components/home/QuickBuyAds";
 import CategorySlider from "@/components/home/CategorySlider";
 import PopularItemsSection from "@/components/home/PopularItemsSection";
@@ -9,6 +10,8 @@ import RestaurantsSection from "@/components/home/RestaurantsSection";
 import CustomizeModal from "@/components/home/CustomizeModal";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/lib/firebase';
 import { Search, Utensils, ShoppingBag } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -210,11 +213,36 @@ const itemVariants = {
 };
 
 const Index = () => {
+  const { currentUser } = useAuth();
   const [selectedItem, setSelectedItem] = useState(null);
   
   const openItemModal = (item) => {
     setSelectedItem(item);
   };
+  
+  const sendTestNotification = async () => {
+    try {
+      const functions = getFunctions(app);
+      const sendNotification = httpsCallable(functions, 'sendNotification');
+      const response = await sendNotification({
+        tokens: [], 
+        title: 'test',
+        body: 'this is a test notification'
+      });
+      if (response.data && response.data.success) {
+        alert('Notification sent successfully!');
+      } else {
+        alert('Failed to send notification.');
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      alert('Failed to send notification.');
+    }
+  };
+  
+  useEffect(() => {
+    
+  }, [currentUser]);
   
   const closeItemModal = () => {
     setSelectedItem(null);
@@ -223,6 +251,15 @@ const Index = () => {
   return (
     <MainLayout>
       {/* Hero section with expanded ads */}
+      {currentUser && (
+        <div className="flex justify-center py-4">
+        <Button
+          onClick={sendTestNotification}
+          >
+          Send Test Notification
+        </Button>
+        </div>
+        )}
       <HeroCarousel />
       
       {/* Quick access ads */}

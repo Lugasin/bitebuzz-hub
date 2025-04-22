@@ -1,6 +1,7 @@
 
-import React from "react";
-import MainLayout from "@/layouts/MainLayout";
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
+import MainLayout from "@/layouts/mainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,260 +45,55 @@ import {
   User,
   AlertTriangle,
   Printer,
+  X
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
-import { format } from "date-fns";
-
-// Mock orders data
-const orders = [
-  {
-    id: "ORD12345",
-    date: new Date(2023, 6, 15, 19, 30),
-    customer: {
-      id: "c1",
-      name: "Jane Cooper",
-      email: "jane.cooper@example.com",
-      phone: "+1 (123) 456-7891",
-      avatar: "https://randomuser.me/api/portraits/women/12.jpg"
-    },
-    restaurant: {
-      id: "1",
-      name: "Chicken King",
-      email: "contact@chickenking.com",
-      phone: "+1 (123) 456-7890",
-      image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    },
-    driver: {
-      id: "d1",
-      name: "John Smith",
-      email: "john.smith@example.com",
-      phone: "+1 (123) 456-7895",
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg"
-    },
-    items: [
-      { name: "Crispy Chicken Burger", quantity: 2, price: 70 },
-      { name: "Fries", quantity: 1, price: 30 }
-    ],
-    subtotal: 170,
-    deliveryFee: 30,
-    serviceFee: 10,
-    total: 210,
-    status: "delivered",
-    paymentMethod: "Credit Card",
-    paymentStatus: "paid"
-  },
-  {
-    id: "ORD12346",
-    date: new Date(2023, 6, 10, 13, 15),
-    customer: {
-      id: "c2",
-      name: "Robert Johnson",
-      email: "robert.johnson@example.com",
-      phone: "+1 (123) 456-7892",
-      avatar: "https://randomuser.me/api/portraits/men/42.jpg"
-    },
-    restaurant: {
-      id: "2",
-      name: "Pizza Palace",
-      email: "contact@pizzapalace.com",
-      phone: "+1 (123) 456-7893",
-      image: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    },
-    driver: {
-      id: "d2",
-      name: "Emily White",
-      email: "emily.white@example.com",
-      phone: "+1 (123) 456-7896",
-      avatar: "https://randomuser.me/api/portraits/women/22.jpg"
-    },
-    items: [
-      { name: "Pepperoni Pizza", quantity: 1, price: 95 },
-      { name: "Garlic Bread", quantity: 1, price: 25 }
-    ],
-    subtotal: 120,
-    deliveryFee: 35,
-    serviceFee: 10,
-    total: 165,
-    status: "delivered",
-    paymentMethod: "Cash on Delivery",
-    paymentStatus: "paid"
-  },
-  {
-    id: "ORD12347",
-    date: new Date(),
-    customer: {
-      id: "c3",
-      name: "Sarah Wilson",
-      email: "sarah.wilson@example.com",
-      phone: "+1 (123) 456-7894",
-      avatar: "https://randomuser.me/api/portraits/women/32.jpg"
-    },
-    restaurant: {
-      id: "3",
-      name: "Fresh Fries",
-      email: "contact@freshfries.com",
-      phone: "+1 (123) 456-7897",
-      image: "https://images.unsplash.com/photo-1685109649408-c5c56ae4428d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    },
-    driver: null, // Not assigned yet
-    items: [
-      { name: "Loaded Fries", quantity: 1, price: 50 },
-      { name: "Soft Drink", quantity: 2, price: 15 }
-    ],
-    subtotal: 80,
-    deliveryFee: 25,
-    serviceFee: 10,
-    total: 115,
-    status: "processing",
-    paymentMethod: "E-eats Wallet",
-    paymentStatus: "paid"
-  },
-  {
-    id: "ORD12348",
-    date: new Date(2023, 6, 5, 20, 45),
-    customer: {
-      id: "c4",
-      name: "Michael Brown",
-      email: "michael.brown@example.com",
-      phone: "+1 (123) 456-7898",
-      avatar: "https://randomuser.me/api/portraits/men/62.jpg"
-    },
-    restaurant: {
-      id: "1",
-      name: "Chicken King",
-      email: "contact@chickenking.com",
-      phone: "+1 (123) 456-7890",
-      image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    },
-    driver: {
-      id: "d3",
-      name: "David Clark",
-      email: "david.clark@example.com",
-      phone: "+1 (123) 456-7899",
-      avatar: "https://randomuser.me/api/portraits/men/12.jpg"
-    },
-    items: [
-      { name: "Family Combo", quantity: 1, price: 220 }
-    ],
-    subtotal: 220,
-    deliveryFee: 30,
-    serviceFee: 10,
-    total: 260,
-    status: "cancelled",
-    paymentMethod: "Credit Card",
-    paymentStatus: "refunded",
-    cancellationReason: "Customer requested cancellation"
-  },
-  {
-    id: "ORD12349",
-    date: new Date(2023, 6, 7, 18, 20),
-    customer: {
-      id: "c5",
-      name: "Emma Davis",
-      email: "emma.davis@example.com",
-      phone: "+1 (123) 456-7900",
-      avatar: "https://randomuser.me/api/portraits/women/52.jpg"
-    },
-    restaurant: {
-      id: "2",
-      name: "Pizza Palace",
-      email: "contact@pizzapalace.com",
-      phone: "+1 (123) 456-7893",
-      image: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    },
-    driver: {
-      id: "d2",
-      name: "Emily White",
-      email: "emily.white@example.com",
-      phone: "+1 (123) 456-7896",
-      avatar: "https://randomuser.me/api/portraits/women/22.jpg"
-    },
-    items: [
-      { name: "Margherita Pizza", quantity: 1, price: 85 },
-      { name: "Coke", quantity: 2, price: 10 }
-    ],
-    subtotal: 105,
-    deliveryFee: 35,
-    serviceFee: 10,
-    total: 150,
-    status: "delivered",
-    paymentMethod: "PayPal",
-    paymentStatus: "paid"
-  },
-  {
-    id: "ORD12350",
-    date: new Date(2023, 6, 8, 12, 35),
-    customer: {
-      id: "c6",
-      name: "Daniel Taylor",
-      email: "daniel.taylor@example.com",
-      phone: "+1 (123) 456-7901",
-      avatar: "https://randomuser.me/api/portraits/men/72.jpg"
-    },
-    restaurant: {
-      id: "4",
-      name: "Beverage Bar",
-      email: "contact@beveragebar.com",
-      phone: "+1 (123) 456-7902",
-      image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    },
-    driver: {
-      id: "d1",
-      name: "John Smith",
-      email: "john.smith@example.com",
-      phone: "+1 (123) 456-7895",
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg"
-    },
-    items: [
-      { name: "Iced Coffee", quantity: 3, price: 25 },
-      { name: "Chocolate Muffin", quantity: 2, price: 15 }
-    ],
-    subtotal: 105,
-    deliveryFee: 20,
-    serviceFee: 10,
-    total: 135,
-    status: "issue",
-    paymentMethod: "Credit Card",
-    paymentStatus: "paid",
-    issueDescription: "Order delivered incomplete, missing muffins"
-  }
-];
+import { formatCurrency, cn } from "@/lib/utils";
+import { format, parseISO } from "date-fns";
+import { getAllOrders, updateOrder, deleteOrder } from "@/models/order";
 
 const AdminOrders = () => {
-  const [activeTab, setActiveTab] = React.useState("all");
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [selectedOrder, setSelectedOrder] = React.useState(null);
-  const [orderDialogOpen, setOrderDialogOpen] = React.useState(false);
-  const [dateFilter, setDateFilter] = React.useState("all");
-  const [paymentFilter, setPaymentFilter] = React.useState("all");
-  
-  const handleTabChange = (value) => {
-    setActiveTab(value);
-  };
-  
-  const viewOrderDetails = (order) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  const { currentUser } = useAuth();
+
+  const viewOrderDetails = useCallback((order) => {
     setSelectedOrder(order);
     setOrderDialogOpen(true);
-  };
-  
-  const handleSearch = (e) => {
+  }, []);
+
+  const handleSearch = useCallback((e) => {
     setSearchQuery(e.target.value);
-  };
-  
-  const assignDriver = () => {
+  }, []);
+
+  const assignDriver = async () => {
     toast({
       title: "Driver assigned",
       description: `A driver has been assigned to order #${selectedOrder.id}`,
     });
   };
   
-  const cancelOrder = () => {
-    toast({
-      title: "Order cancelled",
-      description: `Order #${selectedOrder.id} has been cancelled`,
-    });
+  const cancelOrder = async () => {
+    const orderId = selectedOrder.id;
+    try {
+      console.log("Cancelling order", { orderId });
+      await deleteOrder(orderId);
+      console.log("Order cancelled successfully:", orderId);
+      toast({
+        title: "Order cancelled",
+        description: `Order #${selectedOrder.id} has been cancelled`,
+      });
+      await getOrders();
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      toast({ variant: "destructive", title: "Error cancelling order", description: `An error occurred while trying to cancel order #${orderId}` });
+    }
   };
-  
   const refundOrder = () => {
     toast({
       title: "Refund processed",
@@ -326,26 +122,68 @@ const AdminOrders = () => {
     });
   };
   
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "processing":
-        return <Badge variant="secondary">Processing</Badge>;
-      case "prepared":
-        return <Badge variant="secondary">Prepared</Badge>;
-      case "picked_up":
-        return <Badge variant="warning">Picked Up</Badge>;
-      case "delivering":
-        return <Badge variant="warning">On the Way</Badge>;
-      case "delivered":
-        return <Badge variant="success">Delivered</Badge>;
-      case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
-      case "issue":
-        return <Badge variant="outline" className="border-yellow-500 text-yellow-500">Issue Reported</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const getOrders = async () => {
+    setLoading(true);
+    try {
+      console.log("Getting orders");
+      const orders = await getAllOrders();
+        console.log("Orders retrieved:", orders);
+      setOrders(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      toast({ variant: "destructive", title: "Error fetching orders", description: "An error occurred while trying to retrieve the orders." });
+    } finally {
+      setLoading(false);
     }
   };
+
+  const updateOrderStatus = async (orderId, newStatus) => {
+     try {
+      console.log("Updating order status", { orderId, newStatus });
+        const updatedOrder = await updateOrder(orderId, { status: newStatus });
+      console.log("Order status updated successfully:", updatedOrder);
+      await getOrders();
+    } catch (error) {
+      console.error("Error updating order status:", error);
+        toast({ variant: "destructive", title: "Error updating order", description: `An error occurred while trying to update the order status of #${orderId}` });
+    }
+  };
+
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+    if (value === "refunded") {      
+      setPaymentFilter("refunded");
+    } else {
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser)
+      return;    
+      console.log("currentUser: ", currentUser);
+    getOrders();
+  },[currentUser]);
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+        case "processing":
+          return <Badge variant="secondary">Processing</Badge>;
+        case "prepared":
+          return <Badge variant="secondary">Prepared</Badge>;
+        case "picked_up":
+          return <Badge variant="warning">Picked Up</Badge>;
+        case "delivering":
+          return <Badge variant="warning">On the Way</Badge>;
+        case "delivered":
+          return <Badge variant="success">Delivered</Badge>;
+        case "cancelled":
+          return <Badge variant="destructive">Cancelled</Badge>;
+        case "issue":
+          return <Badge variant="outline" className="border-yellow-500 text-yellow-500">Issue Reported</Badge>;
+        default:
+          return <Badge variant="outline">{status}</Badge>;
+      }
+    };
   
   const getPaymentStatusBadge = (status) => {
     switch (status) {
@@ -377,7 +215,7 @@ const AdminOrders = () => {
     // Filter by date range
     if (dateFilter !== "all") {
       const today = new Date();
-      const orderDate = new Date(order.date);
+          const orderDate = parseISO(order.date);
       
       switch (dateFilter) {
         case "today":
@@ -408,15 +246,15 @@ const AdminOrders = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
-        order.id.toLowerCase().includes(query) ||
-        order.customer.name.toLowerCase().includes(query) ||
-        order.restaurant.name.toLowerCase().includes(query) ||
-        (order.driver && order.driver.name.toLowerCase().includes(query))
+          order.id.toLowerCase().includes(query) ||
+          order.customer.name.toLowerCase().includes(query) ||
+          order.restaurant.name.toLowerCase().includes(query) ||
+          (order.driver && order.driver.name.toLowerCase().includes(query))
       );
     }
     
     return true;
-  });
+  });  
 
   return (
     <MainLayout>
@@ -440,7 +278,7 @@ const AdminOrders = () => {
               className="pl-10"
               value={searchQuery}
               onChange={handleSearch}
-            />
+            />            
           </div>
           
           <div className="flex gap-2 flex-wrap">
@@ -471,8 +309,8 @@ const AdminOrders = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="all" className="w-full" onValueChange={handleTabChange} value={activeTab}>
-          <TabsList className="grid grid-cols-4 lg:grid-cols-7 mb-6">
+        <Tabs defaultValue="all" className="w-full" onValueChange={handleTabChange} value={activeTab}>          
+          <TabsList className="grid grid-cols-4 lg:grid-cols-7 mb-6">            
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="processing">Processing</TabsTrigger>
             <TabsTrigger value="delivering">Delivering</TabsTrigger>
@@ -482,8 +320,14 @@ const AdminOrders = () => {
             <TabsTrigger value="refunded">Refunded</TabsTrigger>
           </TabsList>
           
-          <Card>
+          <Card >
             <CardContent className="p-0 overflow-auto">
+            {loading && (
+              <div className="flex justify-center items-center w-full h-full p-8">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
+              </div>
+            )}
+            {!loading && (
               <Table>
                 <TableHeader className="bg-muted">
                   <TableRow>
@@ -517,7 +361,7 @@ const AdminOrders = () => {
                       <TableRow key={order.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">{order.id}</TableCell>
                         <TableCell>{format(order.date, "MMM d, yyyy")}</TableCell>
-                        <TableCell>
+                          <TableCell>
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={order.customer.avatar} alt={order.customer.name} />
@@ -531,11 +375,11 @@ const AdminOrders = () => {
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={order.restaurant.image} alt={order.restaurant.name} />
                               <AvatarFallback>{order.restaurant.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
+                          </Avatar>                        
                             <span>{order.restaurant.name}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{formatCurrency(order.total)}</TableCell>
+                          <TableCell>{formatCurrency(order.total)}</TableCell>
                         <TableCell>
                           {getStatusBadge(order.status)}
                         </TableCell>
@@ -552,6 +396,7 @@ const AdminOrders = () => {
                   )}
                 </TableBody>
               </Table>
+            )}
             </CardContent>
           </Card>
         </Tabs>
@@ -622,7 +467,7 @@ const AdminOrders = () => {
                   </div>
                   
                   {selectedOrder.status === "issue" && (
-                    <div>
+                    <div key={selectedOrder.issueDescription}>
                       <h3 className="text-lg font-medium mb-2 flex items-center">
                         <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" />
                         Issue Details
@@ -642,7 +487,7 @@ const AdminOrders = () => {
                   )}
                   
                   {selectedOrder.status === "cancelled" && (
-                    <div>
+                    <div key={selectedOrder.cancellationReason}>
                       <h3 className="text-lg font-medium mb-2 flex items-center">
                         <XCircle className="h-5 w-5 mr-2 text-destructive" />
                         Cancellation Details
@@ -730,7 +575,7 @@ const AdminOrders = () => {
                         {selectedOrder.driver ? (
                           <>
                             <div className="flex items-center gap-3 mb-3">
-                              <Avatar>
+                              <Avatar >
                                 <AvatarImage src={selectedOrder.driver.avatar} alt={selectedOrder.driver.name} />
                                 <AvatarFallback>{selectedOrder.driver.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                               </Avatar>
@@ -772,12 +617,12 @@ const AdminOrders = () => {
                 
                 {selectedOrder.status !== "cancelled" && selectedOrder.status !== "delivered" && (
                   <Button variant="destructive" onClick={cancelOrder}>
-                    <XCircle className="h-4 w-4 mr-2" />
+                    <X className="h-4 w-4 mr-2" />
                     Cancel Order
                   </Button>
                 )}
                 
-                {selectedOrder.status !== "refunded" && selectedOrder.paymentStatus !== "refunded" && selectedOrder.paymentMethod !== "Cash on Delivery" && (
+                {selectedOrder.paymentStatus !== "refunded" && selectedOrder.paymentMethod !== "Cash on Delivery" && (
                   <Button variant="outline" onClick={refundOrder}>
                     Refund Order
                   </Button>

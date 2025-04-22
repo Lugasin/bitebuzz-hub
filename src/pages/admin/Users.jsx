@@ -1,6 +1,6 @@
-
-import React, { useState } from "react";
-import MainLayout from "@/layouts/MainLayout";
+import React, { useState, useEffect } from "react";
+import { formatDistance, format } from "date-fns";
+import MainLayout from "../../layouts/MainLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,143 +41,53 @@ import {
   FilterX,
   EyeOff,
   CheckCircle
-} from "lucide-react";
+} from "lucide-react"
 import { toast } from "@/hooks/use-toast";
-import { formatDistance } from "date-fns";
+import { useAuth } from "@/context/AuthContext";
+import { User as UserModel } from "@/models"
 
-// Mock users data
-const users = [
-  {
-    id: "u1",
-    name: "Jane Cooper",
-    email: "jane.cooper@example.com",
-    phone: "+1 (123) 456-7891",
-    avatar: "https://randomuser.me/api/portraits/women/12.jpg",
-    role: "customer",
-    status: "active",
-    joinDate: new Date(2022, 5, 15),
-    orders: 24,
-    totalSpent: 1240
-  },
-  {
-    id: "u2",
-    name: "Robert Johnson",
-    email: "robert.johnson@example.com",
-    phone: "+1 (123) 456-7892",
-    avatar: "https://randomuser.me/api/portraits/men/42.jpg",
-    role: "customer",
-    status: "active",
-    joinDate: new Date(2022, 7, 21),
-    orders: 18,
-    totalSpent: 950
-  },
-  {
-    id: "u3",
-    name: "Sarah Wilson",
-    email: "sarah.wilson@example.com",
-    phone: "+1 (123) 456-7894",
-    avatar: "https://randomuser.me/api/portraits/women/32.jpg",
-    role: "customer",
-    status: "inactive",
-    joinDate: new Date(2022, 2, 8),
-    orders: 3,
-    totalSpent: 145
-  },
-  {
-    id: "u4",
-    name: "Michael Brown",
-    email: "michael.brown@example.com",
-    phone: "+1 (123) 456-7898",
-    avatar: "https://randomuser.me/api/portraits/men/62.jpg",
-    role: "customer",
-    status: "blocked",
-    joinDate: new Date(2022, 11, 5),
-    orders: 1,
-    totalSpent: 45,
-    blockReason: "Suspicious activity"
-  },
-  {
-    id: "u5",
-    name: "Pizza Palace",
-    email: "contact@pizzapalace.com",
-    phone: "+1 (123) 456-7893",
-    avatar: null,
-    role: "vendor",
-    status: "active",
-    joinDate: new Date(2021, 10, 12),
-    restaurantName: "Pizza Palace",
-    totalOrders: 453,
-    rating: 4.8
-  },
-  {
-    id: "u6",
-    name: "Chicken King",
-    email: "contact@chickenking.com",
-    phone: "+1 (123) 456-7890",
-    avatar: null,
-    role: "vendor",
-    status: "active",
-    joinDate: new Date(2021, 8, 24),
-    restaurantName: "Chicken King",
-    totalOrders: 721,
-    rating: 4.7
-  },
-  {
-    id: "u7",
-    name: "John Smith",
-    email: "john.smith@example.com",
-    phone: "+1 (123) 456-7895",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    role: "delivery",
-    status: "active",
-    joinDate: new Date(2022, 4, 18),
-    totalDeliveries: 345,
-    rating: 4.9
-  },
-  {
-    id: "u8",
-    name: "Emily White",
-    email: "emily.white@example.com",
-    phone: "+1 (123) 456-7896",
-    avatar: "https://randomuser.me/api/portraits/women/22.jpg",
-    role: "delivery",
-    status: "active",
-    joinDate: new Date(2022, 6, 30),
-    totalDeliveries: 189,
-    rating: 4.7
-  },
-  {
-    id: "u9",
-    name: "David Clark",
-    email: "david.clark@example.com",
-    phone: "+1 (123) 456-7899",
-    avatar: "https://randomuser.me/api/portraits/men/12.jpg",
-    role: "delivery",
-    status: "inactive",
-    joinDate: new Date(2022, 3, 11),
-    totalDeliveries: 78,
-    rating: 4.5
-  },
-  {
-    id: "u10",
-    name: "Admin User",
-    email: "admin@eeats.com",
-    phone: "+1 (123) 456-7900",
-    avatar: null,
-    role: "admin",
-    status: "active",
-    joinDate: new Date(2021, 0, 1),
-    permissions: ["users", "orders", "restaurants", "settings"]
-  }
-];
+const getInitials = (name) => {
+  if (!name) return "U";
+  const nameParts = name.split(" ");
+  if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
+  return (
+    nameParts[0].charAt(0).toUpperCase() +
+    nameParts[nameParts.length - 1].charAt(0).toUpperCase()
+  );
+};
 
-const AdminUsers = () => {
+
+const AdminUsers = () => { 
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [actionType, setActionType] = useState(""); // 'block', 'delete', etc.
+  const [usersList, setUsersList] = useState([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const allUsers = await UserModel.getAllUsers();
+        console.log("allUsers", allUsers)
+        setUsersList(allUsers);
+        console.log("Users fetched successfully:", allUsers);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch users.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+
   
   const handleTabChange = (value) => {
     setActiveTab(value);
@@ -198,37 +108,92 @@ const AdminUsers = () => {
     setConfirmDialogOpen(true);
   };
   
-  const performAction = () => {
+  const performAction = async () => {
     let message = "";
-    
-    switch (actionType) {
-      case "block":
-        message = `User ${selectedUser.name} has been blocked`;
-        break;
-      case "unblock":
-        message = `User ${selectedUser.name} has been unblocked`;
-        break;
-      case "delete":
-        message = `User ${selectedUser.name} has been deleted`;
-        break;
-      case "activate":
-        message = `User ${selectedUser.name} has been activated`;
-        break;
-      case "deactivate":
-        message = `User ${selectedUser.name} has been deactivated`;
-        break;
-      default:
-        message = "Action completed successfully";
+    try {
+      switch (actionType) {
+        case "block":
+          await UserModel.updateUser(selectedUser.id, { status: "blocked" });
+          message = `User ${selectedUser.name} has been blocked`
+          console.log(message)
+          break;
+        case "unblock":
+          await UserModel.updateUser(selectedUser.id, { status: "active" });
+          message = `User ${selectedUser.name} has been unblocked`
+          console.log(message)
+          break;
+        case "delete":
+          await UserModel.deleteUser(selectedUser.id);
+          message = `User ${selectedUser.name} has been deleted`
+          console.log(message)
+          break;
+        case "activate":
+          await UserModel.updateUser(selectedUser.id, { status: "active" });
+          message = `User ${selectedUser.name} has been activated`
+          break;
+        case "deactivate":
+          await UserModel.updateUser(selectedUser.id, { status: "inactive" });
+          message = `User ${selectedUser.name} has been deactivated`
+          break;
+        case "edit":
+            await UserModel.updateUser(selectedUser.id, selectedUser);
+            message = `User ${selectedUser.name} has been updated`
+            console.log("User updated successfully:", selectedUser);
+            break;
+          break;
+        default:
+          message = "Action completed successfully";
+      }
+
+      // Update the local state to reflect changes
+      setUsersList((prevUsers) => {
+        return prevUsers.map((user) => {
+          if (user.id === selectedUser.id) {            
+            if (actionType === "edit"){
+              return selectedUser
+            }else{
+              return { ...user, status: actionType === "block" ? "blocked" : actionType === "unblock" ? "active": actionType === "activate" ? "active" : actionType === "deactivate" ? "inactive" : user.status };
+            }
+          }
+          return user
+        }).filter(user=> actionType === "delete" ? user.id !== selectedUser.id : true);
+      })
+
+
+      
+      toast({
+        title: "Success",
+        description: message,
+      });
+    } catch (error) {
+      console.error("Error performing action:", error);
+      toast({
+        title: "Error",
+        description: `Failed to perform action: ${actionType}.`,
+        variant: "destructive",
+      });
+    } finally {
+      setConfirmDialogOpen(false);
+      setUserDialogOpen(false);
+      setSelectedUser(null);
     }
-    
-    toast({
-      title: "Success",
-      description: message,
-    });
-    
-    setConfirmDialogOpen(false);
   };
-  
+
+  const handleUserUpdate = async (updatedUserData) => {
+    try {
+      await UserModel.updateUser(updatedUserData.id, updatedUserData);
+      console.log("User updated successfully:", updatedUserData);
+      performAction()
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update user.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const exportUsers = () => {
     toast({
       title: "Export started",
@@ -236,7 +201,7 @@ const AdminUsers = () => {
     });
   };
   
-  const getRoleBadge = (role) => {
+  const getRoleBadge = (role) => {    
     switch (role) {
       case "customer":
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">Customer</Badge>;
@@ -250,7 +215,7 @@ const AdminUsers = () => {
         return <Badge variant="outline">{role}</Badge>;
     }
   };
-  
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "active":
@@ -263,7 +228,7 @@ const AdminUsers = () => {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-  
+
   const getRoleIcon = (role) => {
     switch (role) {
       case "customer":
@@ -278,18 +243,10 @@ const AdminUsers = () => {
         return <User className="h-5 w-5" />;
     }
   };
-  
-  const getInitials = (name) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
-  
+
+
   // Filter users based on search query and role tab
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = usersList.filter(user => {
     // Filter by role (tab)
     if (activeTab !== "all" && user.role !== activeTab) {
       return false;
@@ -301,14 +258,14 @@ const AdminUsers = () => {
       return (
         user.name.toLowerCase().includes(query) ||
         user.email.toLowerCase().includes(query) ||
-        (user.restaurantName && user.restaurantName.toLowerCase().includes(query))
+        (user.restaurantName && user.restaurantName.toLowerCase().includes(query))        
       );
     }
-    
+
     return true;
   });
 
-  return (
+  return (    
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
@@ -394,13 +351,13 @@ const AdminUsers = () => {
                         <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>
                         <TableCell>{formatDistance(user.joinDate, new Date(), { addSuffix: true })}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right">                        
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="icon" onClick={() => viewUserDetails(user)}>
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => viewUserDetails(user)}>
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-4 w-4" onClick={() => handleUserUpdate(user)} />
                             </Button>
                             {user.role !== "admin" && (
                               <Button 
@@ -636,7 +593,7 @@ const AdminUsers = () => {
               <Button 
                 variant={actionType === "delete" || actionType === "block" || actionType === "deactivate" ? "destructive" : "default"}
                 onClick={performAction}
-              >
+              >                
                 Confirm
               </Button>
             </DialogFooter>

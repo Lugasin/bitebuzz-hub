@@ -1,8 +1,9 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import MainLayout from "@/layouts/MainLayout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -10,229 +11,99 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import {
-  MapPin,
-  Navigation,
-  Phone,
-  Package,
-  CheckCircle,
-  Clock,
-  Truck,
-  AlertCircle,
-  Frown,
-  ChevronRight,
-  User,
-  Store,
-  CircleDollarSign
-} from "lucide-react";
+import { MapPin, Navigation, Phone, Package, CheckCircle, Clock, Truck, AlertCircle, Frown, ChevronRight, User, Store, Star, CircleDollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
+import { Separator } from "@/components/ui/separator";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
-// Mock delivery orders data
-const deliveryOrders = [
-  {
-    id: "DEL12345",
-    status: "available",
-    createdAt: new Date(new Date().getTime() - 5 * 60000), // 5 minutes ago
-    restaurant: {
-      id: "1",
-      name: "Chicken King",
-      address: "123 Main St, City, State",
-      location: { lat: -15.3875, lng: 28.3228 },
-      image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-      phone: "+1 (123) 456-7890"
-    },
-    customer: {
-      id: "c1",
-      name: "Jane Cooper",
-      address: "456 Park Ave, City, State",
-      location: { lat: -15.4006, lng: 28.3228 },
-      phone: "+1 (123) 456-7891"
-    },
-    items: [
-      { name: "Crispy Chicken Burger", quantity: 2 },
-      { name: "Fries", quantity: 1 },
-      { name: "Cola", quantity: 2 }
-    ],
-    total: 170,
-    deliveryFee: 30,
-    estimatedDistance: "2.5 km",
-    estimatedTime: "15 min"
-  },
-  {
-    id: "DEL12346",
-    status: "active",
-    acceptedAt: new Date(new Date().getTime() - 15 * 60000), // 15 minutes ago
-    pickedUpAt: new Date(new Date().getTime() - 5 * 60000), // 5 minutes ago
-    createdAt: new Date(new Date().getTime() - 25 * 60000), // 25 minutes ago
-    restaurant: {
-      id: "2",
-      name: "Pizza Palace",
-      address: "789 Food St, City, State",
-      location: { lat: -15.3906, lng: 28.3128 },
-      image: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-      phone: "+1 (123) 456-7892"
-    },
-    customer: {
-      id: "c2",
-      name: "Robert Johnson",
-      address: "101 Delivery Rd, City, State",
-      location: { lat: -15.4043, lng: 28.3172 },
-      phone: "+1 (123) 456-7893"
-    },
-    items: [
-      { name: "Pepperoni Pizza (Large)", quantity: 1 },
-      { name: "Garlic Bread", quantity: 1 }
-    ],
-    total: 120,
-    deliveryFee: 35,
-    estimatedDistance: "3.2 km",
-    estimatedTime: "12 min"
-  },
-  {
-    id: "DEL12347",
-    status: "completed",
-    acceptedAt: new Date(new Date().getTime() - 75 * 60000), // 75 minutes ago
-    pickedUpAt: new Date(new Date().getTime() - 65 * 60000), // 65 minutes ago
-    deliveredAt: new Date(new Date().getTime() - 55 * 60000), // 55 minutes ago
-    createdAt: new Date(new Date().getTime() - 85 * 60000), // 85 minutes ago
-    restaurant: {
-      id: "3",
-      name: "Fresh Fries",
-      address: "222 Snack Blvd, City, State",
-      location: { lat: -15.3950, lng: 28.3100 },
-      image: "https://images.unsplash.com/photo-1685109649408-c5c56ae4428d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-      phone: "+1 (123) 456-7894"
-    },
-    customer: {
-      id: "c3",
-      name: "Sarah Wilson",
-      address: "303 Customer Ave, City, State",
-      location: { lat: -15.4015, lng: 28.3109 },
-      phone: "+1 (123) 456-7895"
-    },
-    items: [
-      { name: "Loaded Fries", quantity: 1 },
-      { name: "Soft Drink", quantity: 2 }
-    ],
-    total: 80,
-    deliveryFee: 25,
-    estimatedDistance: "1.8 km",
-    estimatedTime: "10 min",
-    rating: 5,
-    review: "Excellent service and fast delivery!"
-  },
-  {
-    id: "DEL12348",
-    status: "completed",
-    acceptedAt: new Date(new Date().getTime() - 240 * 60000), // 4 hours ago
-    pickedUpAt: new Date(new Date().getTime() - 230 * 60000), // 3 hours 50 minutes ago
-    deliveredAt: new Date(new Date().getTime() - 215 * 60000), // 3 hours 35 minutes ago
-    createdAt: new Date(new Date().getTime() - 250 * 60000), // 4 hours 10 minutes ago
-    restaurant: {
-      id: "1",
-      name: "Chicken King",
-      address: "123 Main St, City, State",
-      location: { lat: -15.3875, lng: 28.3228 },
-      image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-      phone: "+1 (123) 456-7890"
-    },
-    customer: {
-      id: "c4",
-      name: "Michael Brown",
-      address: "404 Home St, City, State",
-      location: { lat: -15.3905, lng: 28.3128 },
-      phone: "+1 (123) 456-7896"
-    },
-    items: [
-      { name: "Family Combo", quantity: 1 }
-    ],
-    total: 220,
-    deliveryFee: 30,
-    estimatedDistance: "2.2 km",
-    estimatedTime: "14 min",
-    rating: 4,
-    review: "Good service, food was still hot."
-  },
-  {
-    id: "DEL12349",
-    status: "cancelled",
-    acceptedAt: new Date(new Date().getTime() - 320 * 60000), // 5 hours 20 minutes ago
-    cancelledAt: new Date(new Date().getTime() - 310 * 60000), // 5 hours 10 minutes ago
-    createdAt: new Date(new Date().getTime() - 330 * 60000), // 5 hours 30 minutes ago
-    restaurant: {
-      id: "2",
-      name: "Pizza Palace",
-      address: "789 Food St, City, State",
-      location: { lat: -15.3906, lng: 28.3128 },
-      image: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-      phone: "+1 (123) 456-7892"
-    },
-    customer: {
-      id: "c5",
-      name: "Emily Davis",
-      address: "505 Cancel St, City, State",
-      location: { lat: -15.4025, lng: 28.3145 },
-      phone: "+1 (123) 456-7897"
-    },
-    items: [
-      { name: "Margherita Pizza", quantity: 1 },
-      { name: "Caesar Salad", quantity: 1 }
-    ],
-    total: 95,
-    deliveryFee: 35,
-    estimatedDistance: "2.8 km",
-    estimatedTime: "18 min",
-    cancellationReason: "Restaurant closed early"
-  }
-];
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+
+import { Order } from "@/models/order";
 
 const DeliveryOrders = () => {
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("available");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
-  
+  const [orders, setOrders] = useState([]);
+
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+
   const handleTabChange = (value) => {
     setActiveTab(value);
   };
-  
+
   const viewOrderDetails = (order) => {
     setSelectedOrder(order);
     setOrderDialogOpen(true);
   };
-  
-  const acceptOrder = (orderId) => {
-    // Update order status logic would go here in a real app
-    toast({
-      title: "Order accepted",
-      description: `You have accepted order #${orderId}`,
-    });
-    
-    // Simulate order status update
-    setTimeout(() => {
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        if (currentUser ) {
+          const deliveryDriverId = currentUser.uid; 
+          const fetchedOrders = await Order.getOrderByDeliveryDriver(deliveryDriverId);
+          console.log("Fetched orders:", fetchedOrders);
+          setOrders(fetchedOrders);
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch orders.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchOrders();
+  }, [currentUser]);
+
+  const acceptOrder = useCallback(async (orderId) => {
+    try {
+      await Order.updateOrder(orderId, { status: "active", acceptedAt: new Date(), deliveryDriver: currentUser.uid });
+      toast({
+        title: "Order accepted",
+        description: `You have accepted order #${orderId}`,
+      });
+      setOrders((prevOrders) => prevOrders.map((order) => (order.id === orderId ? { ...order, status: "active", acceptedAt: new Date() } : order)));
       setActiveTab("active");
-    }, 500);
-  };
-  
-  const markAsPickedUp = (orderId) => {
-    // Update order status logic would go here in a real app
-    toast({
-      title: "Order picked up",
-      description: `You have marked order #${orderId} as picked up`,
-    });
-  };
-  
-  const markAsDelivered = (orderId) => {
-    // Update order status logic would go here in a real app
-    toast({
-      title: "Order delivered",
-      description: `You have delivered order #${orderId}`,
-    });
-    
-    // Simulate order status update
-    setTimeout(() => {
+    } catch (error) {
+      console.error("Error accepting order:", error);
+      toast({ title: "Error", description: `Failed to accept order #${orderId}.`, variant: "destructive" });
+    }
+  }, [currentUser]);
+
+  const markAsPickedUp = useCallback(async (orderId) => {
+    try {
+      await Order.updateOrder(orderId, { pickedUpAt: new Date() });
+      toast({ title: "Order picked up", description: `You have marked order #${orderId} as picked up` });
+      setOrders((prevOrders) => prevOrders.map((order) => (order.id === orderId ? { ...order, pickedUpAt: new Date() } : order)));
+    } catch (error) {
+      console.error("Error marking order as picked up:", error);
+      toast({ title: "Error", description: `Failed to mark order #${orderId} as picked up.`, variant: "destructive" });
+    }
+  }, []);
+
+  const markAsDelivered = useCallback(
+    async (orderId) => {
+      try {
+        await Order.updateOrder(orderId, { status: "completed", deliveredAt: new Date() });
+        toast({
+          title: "Order delivered",
+          description: `You have delivered order #${orderId}`,
+        });
+
+        // Simulate order status update
+
       setActiveTab("completed");
+      setOrders((prevOrders) => prevOrders.map((order) => (order.id === orderId ? { ...order, status: "completed", deliveredAt: new Date() } : order)));
+    } catch (error) {
+      console.error("Error marking order as delivered:", error);
+      toast({ title: "Error", description: `Failed to mark order #${orderId} as delivered.`, variant: "destructive" });
     }, 500);
   };
   
@@ -243,48 +114,54 @@ const DeliveryOrders = () => {
       description: `You have reported an issue with order #${orderId}`,
     });
   };
-  
+
   const toggleAvailability = () => {
     setIsAvailable(!isAvailable);
-    
+
     toast({
       title: isAvailable ? "You are now offline" : "You are now online",
-      description: isAvailable 
-        ? "You won't receive new delivery requests" 
-        : "You will start receiving delivery requests",
+      description: isAvailable ? "You won't receive new delivery requests" : "You will start receiving delivery requests",
     });
   };
-  
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "available":
-        return <Badge variant="secondary">Available</Badge>;
-      case "active":
-        return <Badge variant="warning">In Progress</Badge>;
-      case "completed":
-        return <Badge variant="success">Completed</Badge>;
-      case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+            return <Badge variant="secondary">Available</Badge>;
+        case "active":
+            return <Badge variant="warning">In Progress</Badge>;
+        case "completed":
+            return <Badge variant="success">Completed</Badge>;
+        case "cancelled":
+            return <Badge variant="destructive">Cancelled</Badge>;
+        default:
+            return <Badge variant="outline">{status}</Badge>;
     }
-  };
-  
-  const filteredOrders = deliveryOrders.filter(order => order.status === activeTab);
+    };
+
+  const filteredOrders = orders.filter((order) => order.status === activeTab);
+
+  if (!currentUser) {
+    return (
+      <MainLayout>
+        <p>You must be logged in to view orders.</p>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <h1 className="text-3xl font-bold">Delivery Orders</h1>
-          
+
           <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isAvailable ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <Label htmlFor="available" className="mr-2">Available for Deliveries</Label>
-            <Switch 
-              id="available" 
-              checked={isAvailable} 
-              onCheckedChange={toggleAvailability} 
+            <div className={`w-3 h-3 rounded-full ${isAvailable ? "bg-green-500" : "bg-red-500"}`}></div>
+            <Label htmlFor="available" className="mr-2">
+              Available for Deliveries
+            </Label>
+            <Switch id="available" checked={isAvailable} onCheckedChange={toggleAvailability}
+
             />
           </div>
         </div>
@@ -314,15 +191,12 @@ const DeliveryOrders = () => {
                 <h2 className="text-xl font-semibold mb-2">No {activeTab} orders</h2>
                 <p className="text-muted-foreground mb-6">
                   {activeTab === "available" 
-                    ? "There are no available orders at the moment. Check back soon!" 
-                    : activeTab === "active" 
-                    ? "You don't have any active deliveries right now."
-                    : activeTab === "completed"
-                    ? "You haven't completed any deliveries yet."
-                    : "You don't have any cancelled orders."}
+                    ? "There are no available orders at the moment. Check back soon!"
+                    : activeTab === "active"
+                    ? "You don't have any active deliveries right now." : activeTab === "completed" ? "You haven't completed any deliveries yet." : "You don't have any cancelled orders."}
                 </p>
                 {!isAvailable && activeTab === "available" && (
-                  <Button onClick={toggleAvailability}>
+                  <Button className={cn(buttonVariants({ variant: "default" }))} onClick={toggleAvailability}>
                     Go Online
                   </Button>
                 )}
@@ -333,12 +207,12 @@ const DeliveryOrders = () => {
                   <Card key={order.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-0">
                       <div className="flex flex-col md:flex-row border-b">
-                        <div className="md:w-1/4 h-24 md:h-auto">
-                          <img 
-                            src={order.restaurant.image} 
+                        <div className="md:w-1/4 h-24 md:h-auto overflow-hidden">
+                          <img
+                            src={order.restaurant.image}
                             alt={order.restaurant.name}
-                            className="w-full h-full object-cover"
-                          />
+                            className="w-full h-full object-cover" />
+
                         </div>
                         <div className="p-4 flex-1">
                           <div className="flex justify-between items-start">
@@ -350,7 +224,7 @@ const DeliveryOrders = () => {
                             </div>
                             <div>{getStatusBadge(order.status)}</div>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4 text-sm">
                             <div className="flex items-center">
                               <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
@@ -365,7 +239,7 @@ const DeliveryOrders = () => {
                               <span>{formatCurrency(order.deliveryFee)}</span>
                             </div>
                           </div>
-                          
+
                           <div className="flex flex-wrap gap-2 text-sm">
                             <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full">
                               <Store className="h-3 w-3" />
@@ -378,12 +252,12 @@ const DeliveryOrders = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-2">
                         <div className="text-sm">
                           <span className="font-medium">Order:</span> #{order.id}
                         </div>
-                        
+
                         <div className="flex flex-wrap justify-end gap-2">
                           {order.status === "available" && (
                             <>
@@ -395,7 +269,7 @@ const DeliveryOrders = () => {
                               </Button>
                             </>
                           )}
-                          
+
                           {order.status === "active" && (
                             <>
                               <Button size="sm" variant="outline" onClick={() => viewOrderDetails(order)}>
@@ -414,7 +288,7 @@ const DeliveryOrders = () => {
                                 Report Issue
                               </Button>
                             </>
-                          )}
+                          )}{/* Display Button to the user */}
                           
                           {(order.status === "completed" || order.status === "cancelled") && (
                             <Button size="sm" variant="outline" onClick={() => viewOrderDetails(order)}>
@@ -429,10 +303,12 @@ const DeliveryOrders = () => {
                 ))}
               </div>
             )}
+
           </TabsContent>
         </Tabs>
-        
+
         {/* Order Details Dialog */}
+
         {selectedOrder && (
           <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
             <DialogContent className="max-w-3xl">
@@ -440,15 +316,15 @@ const DeliveryOrders = () => {
                 Order #{selectedOrder.id}
                 {getStatusBadge(selectedOrder.status)}
               </DialogTitle>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left Column */}
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <Store className="h-5 w-5 text-primary" />
-                    Restaurant Information
+                    Restaurant Information {/* Restaurant Information */}
                   </h3>
-                  
+
                   <Card className="mb-4">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3 mb-3">
@@ -464,12 +340,12 @@ const DeliveryOrders = () => {
                           <p className="text-sm text-muted-foreground">{selectedOrder.restaurant.address}</p>
                         </div>
                       </div>
-                      
+
                       <div className="flex justify-between gap-2">
                         <Button size="sm" variant="outline" className="flex-1" onClick={() => window.open(`tel:${selectedOrder.restaurant.phone}`)}>
                           <Phone className="mr-2 h-4 w-4" />
                           Call
-                        </Button>
+                        </Button>{/* Call to the restaurant */}
                         <Button size="sm" variant="outline" className="flex-1" onClick={() => window.open(`https://maps.google.com/?q=${selectedOrder.restaurant.location.lat},${selectedOrder.restaurant.location.lng}`)}>
                           <Navigation className="mr-2 h-4 w-4" />
                           Directions
@@ -477,13 +353,13 @@ const DeliveryOrders = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <User className="h-5 w-5 text-primary" />
-                    Customer Information
+                    Customer Information {/* Customer Information */}
                   </h3>
-                  
-                  <Card className="mb-4">
+
+                   <Card className="mb-4">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3 mb-3">
                         <Avatar className="h-12 w-12">
@@ -494,7 +370,7 @@ const DeliveryOrders = () => {
                           <p className="text-sm text-muted-foreground">{selectedOrder.customer.address}</p>
                         </div>
                       </div>
-                      
+
                       <div className="flex justify-between gap-2">
                         <Button size="sm" variant="outline" className="flex-1" onClick={() => window.open(`tel:${selectedOrder.customer.phone}`)}>
                           <Phone className="mr-2 h-4 w-4" />
@@ -507,7 +383,7 @@ const DeliveryOrders = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   {selectedOrder.status === "cancelled" && (
                     <div className="bg-destructive/10 p-4 rounded-md border border-destructive/20 mb-4">
                       <div className="flex items-start gap-2">
@@ -524,14 +400,14 @@ const DeliveryOrders = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {selectedOrder.rating && (
                     <div className="bg-primary/10 p-4 rounded-md border border-primary/20">
                       <h4 className="font-medium mb-1">Customer Rating</h4>
                       <div className="flex items-center gap-1 mb-1">
                         {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
+                          <Star
+                            key={i}
                             className={`h-5 w-5 ${i < selectedOrder.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} 
                           />
                         ))}
@@ -542,13 +418,13 @@ const DeliveryOrders = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Right Column */}
                 <div>
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <Package className="h-5 w-5 text-primary" />
-                    Order Details
-                  </h3>
+                    Order Details{/* Order Details */}
+                  </h3> 
                   
                   <Card className="mb-4">
                     <CardContent className="p-4">
@@ -559,7 +435,7 @@ const DeliveryOrders = () => {
                           </div>
                         ))}
                       </div>
-                      
+
                       <div className="border-t pt-3 space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Subtotal</span>
@@ -576,11 +452,11 @@ const DeliveryOrders = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <h3 className="font-medium mb-2 flex items-center gap-2">
                     <Clock className="h-5 w-5 text-primary" />
                     Delivery Timeline
-                  </h3>
+                  </h3>{/* Delivery Timeline */}
                   
                   <Card>
                     <CardContent className="p-4">
@@ -601,7 +477,7 @@ const DeliveryOrders = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex">
                           <div className="mr-4 relative flex flex-col items-center">
                             <div className={`h-6 w-6 rounded-full ${selectedOrder.acceptedAt ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'} flex items-center justify-center`}>
@@ -622,7 +498,7 @@ const DeliveryOrders = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {!selectedOrder.cancelledAt && (
                           <>
                             <div className="flex">
@@ -645,7 +521,7 @@ const DeliveryOrders = () => {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="flex">
                               <div className="mr-4 relative flex flex-col items-center">
                                 <div className={`h-6 w-6 rounded-full ${selectedOrder.deliveredAt ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'} flex items-center justify-center`}>
@@ -666,7 +542,7 @@ const DeliveryOrders = () => {
                               </div>
                             </div>
                           </>
-                        )}
+                        )}{/* Check is canceled */}
                         
                         {selectedOrder.cancelledAt && (
                           <div className="flex">
@@ -686,22 +562,22 @@ const DeliveryOrders = () => {
                           </div>
                         )}
                       </div>
-                    </CardContent>
+                    </CardContent> {/* End card */}
                   </Card>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-4">
                 <DialogClose asChild>
                   <Button variant="outline">Close</Button>
                 </DialogClose>
-                
+
                 {selectedOrder.status === "available" && (
                   <Button onClick={() => acceptOrder(selectedOrder.id)}>
                     Accept Order
                   </Button>
                 )}
-                
+
                 {selectedOrder.status === "active" && !selectedOrder.pickedUpAt && (
                   <Button onClick={() => markAsPickedUp(selectedOrder.id)}>
                     Mark as Picked Up
@@ -715,27 +591,10 @@ const DeliveryOrders = () => {
                 )}
               </div>
             </DialogContent>
-          </Dialog>
-        )}
+          </Dialog> {/* End dialog */}
+        )}{/* Check is selectedOrder */}
       </div>
     </MainLayout>
-  );
-};
-
-const Star = ({ className }) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
   );
 };
 

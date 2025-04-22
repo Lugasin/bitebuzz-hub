@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
 import MainLayout from "@/layouts/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
+import { Card, CardContent,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -26,99 +26,199 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   Search,
+  AlertCircle,
   Download,
   Store,
   Edit,
   Eye,
   MapPin,
   Phone,
-  Mail,
-  Clock,
+   Clock,
   Check,
   X,
   AlertCircle,
+  Mail,
+  MapPin,
+  Phone,
   BarChart,
-  UserCheck,
-  DollarSign,
+  
   Settings,
+  Loader,
   Trash2,
-  Calendar,
-  FileText,
+  Calendar,User,
+  FileText,Star,
   User
 } from "lucide-react";
+import { Vendor } from "@/models";
+import {
+  ScrollArea,
+} from "@/components/ui/scroll-area";
 import { format, formatDistance } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 
-const restaurants = [
-  // Mock restaurants data remains unchanged
-];
 
 const AdminVendors = () => {
+  const { currentUser } = useAuth();
+  const [vendors, setVendors] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState(null);
+
+
+  useEffect(() => {
+    const fetchVendors = useCallback(async () => {
+      try {
+        const allVendors = await Vendor.getAllVendors();
+        console.log("Fetched vendors:", allVendors);
+
+        if (!allVendors || !Array.isArray(allVendors)) {
+          console.error("Invalid or empty vendors data received:", allVendors);
+          toast({
+            title: "Error",
+            description: "Failed to load vendors data.",
+            variant: "destructive",
+          });
+        } else {
+            setVendors(allVendors);
+        }
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+       
+        toast({
+          title: "Error",
+          description: `Failed to fetch vendors: ${error.message}`,
+          variant: "destructive",
+        });
+      }finally {
+        setIsLoading(false);
+      }
+    };
+  const [selectedVendor, setSelectedVendor] = useState(null);
+    
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [actionType, setActionType] = useState("");
 
   const handleTabChange = (value) => {
+    console.log("Tab changed to:", value);
     setActiveTab(value);
   };
 
-  const viewVendorDetails = (vendor) => {
-    setSelectedVendor(vendor);
-    setVendorDialogOpen(true);
+  const refreshVendors = () => {
+    setIsLoading(true);
+    fetchVendors();
   };
+
+  useEffect(() => {
+    console.log("Fetching vendors...");
+    fetchVendors();
+  }, []);
+
+  useEffect(() => {
+    const logVendorsUpdate = async () => {
+        try {
+            console.log("Vendors state updated:", vendors);
+        } catch (error) {
+            console.error("Error logging vendors update:", error);
+        }
+    };
+    logVendorsUpdate();
+
+  }, [vendors]);
+
+
+
+  const viewVendorDetails = (vendor) => {
+      try{
+          Vendor.getVendorById(vendor.id).then((vendorData) => {
+            setSelectedVendor(vendorData)
+          }).catch((error) => {
+            console.error("Error in viewVendorDetails:",error)
+          });
+          
+          setVendorDialogOpen(true);
+      }catch(error){console.error("Error in viewVendorDetails:", error)}
+ };
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
   };
 
   const confirmAction = (vendor, action) => {
-    setSelectedVendor(vendor);
-    setActionType(action);
-    setConfirmDialogOpen(true);
+      setSelectedVendor(vendor);
+      setActionType(action);
+      setConfirmDialogOpen(true);
   };
 
-  const performAction = () => {
-    let message = "";
+  const performAction = async () => {
+      if (!selectedVendor) {
+        return; 
+      }
+      let message = "";
+      try{
+          
+          switch (actionType) {
+              case "suspend":
+                  await Vendor.updateVendor(selectedVendor.id, {status: "suspended"});
+                  console.log(`Restaurant ${selectedVendor.name} has been suspended`);
+                   message = `Restaurant ${selectedVendor.name} has been suspended`;
+                  break;
+              case "reactivate":
+                  await Vendor.updateVendor(selectedVendor.id, {status: "active"});
+                  console.log(`Restaurant ${selectedVendor.name} has been reactivated`);
+                   message = `Restaurant ${selectedVendor.name} has been reactivated`;
+                  break;
+              case "delete":
+                  await Vendor.deleteVendor(selectedVendor.id);
+                  console.log(`Restaurant ${selectedVendor.name} has been deleted`);
+                   message = `Restaurant ${selectedVendor.name} has been deleted`;
+                  break;
+              case "approve":
+                  await Vendor.updateVendor(selectedVendor.id, {status: "active"});
+                  console.log(`Restaurant ${selectedVendor.name} has been approved`);
+                   message = `Restaurant ${selectedVendor.name} has been approved`;
+                  break;
+              case "feature":
+                  await Vendor.updateVendor(selectedVendor.id, {featured: true});
+                  console.log(`Restaurant ${selectedVendor.name} is now featured`);
+                   message = `Restaurant ${selectedVendor.name} is now featured`;
+                  break;
+              case "unfeature":
+                  await Vendor.updateVendor(selectedVendor.id, {featured: false});
+                  console.log(`Restaurant ${selectedVendor.name} has been removed from featured list`);
 
-    switch (actionType) {
-      case "suspend":
-        message = `Restaurant ${selectedVendor.name} has been suspended`;
-        break;
-      case "reactivate":
-        message = `Restaurant ${selectedVendor.name} has been reactivated`;
-        break;
-      case "delete":
-        message = `Restaurant ${selectedVendor.name} has been deleted`;
-        break;
-      case "approve":
-        message = `Restaurant ${selectedVendor.name} has been approved`;
-        break;
-      case "feature":
-        message = `Restaurant ${selectedVendor.name} has been featured`;
-        break;
-      case "unfeature":
-        message = `Restaurant ${selectedVendor.name} has been removed from featured list`;
-        break;
-      default:
-        message = "Action completed successfully";
-    }
+                  message = `Restaurant ${selectedVendor.name} has been removed from featured list`;
+                  
+                  break;
+              default:
+                  message = "Action completed successfully";
+          }
 
-    toast({
-      title: "Success",
-      description: message,
-    });
+          toast({
+              title: "Success",
+              description: message,
+              duration: 5000, 
+          });
+          refreshVendors();
+      } catch (error) {
+          console.error("Error performing action:", error);
+          toast({
+            title: "Error",
+            description: `Failed to perform action: ${error.message}`,
+            variant: "destructive",
+          });
+      } finally {
+        setConfirmDialogOpen(false);
+      }
 
-    setConfirmDialogOpen(false);
   };
 
   const exportVendors = () => {
-    toast({
-      title: "Export started",
-      description: "Vendors are being exported to CSV",
-    });
+      toast({
+        title: "Export started",
+        description: "Vendors are being exported to CSV",
+      });
   };
 
   const getStatusBadge = (status) => {
@@ -143,28 +243,30 @@ const AdminVendors = () => {
       .toUpperCase();
   };
 
-  const filteredVendors = restaurants.filter(vendor => {
+  const filteredVendors = vendors.filter(vendor => {
     if (activeTab !== "all" && vendor.status !== activeTab) {
       return false;
     }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      return (
+       return (
         vendor.name.toLowerCase().includes(query) ||
         vendor.cuisine.toLowerCase().includes(query) ||
         vendor.owner.name.toLowerCase().includes(query) ||
-        vendor.address.toLowerCase().includes(query)
+        vendor.address?.toLowerCase().includes(query)
       );
     }
 
     return true;
   });
 
+
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
+
           <h1 className="text-3xl font-bold">Restaurant Management</h1>
           
           <div className="flex gap-2">
@@ -200,6 +302,7 @@ const AdminVendors = () => {
             <CardContent className="p-0 overflow-auto">
               <Table>
                 <TableHeader className="bg-muted">
+
                   <TableRow>
                     <TableHead>Restaurant</TableHead>
                     <TableHead>Owner</TableHead>
@@ -208,10 +311,17 @@ const AdminVendors = () => {
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                </TableHeader>
                 <TableBody>
                   {filteredVendors.length === 0 ? (
-                    <TableRow>
+                      isLoading ? (<TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                          <div className="flex flex-col items-center">
+                              <Loader className="h-8 w-8 text-muted-foreground mb-2 animate-spin"/>
+                          </div>
+                      </TableCell>
+                  </TableRow>)
+                      :
+                    (<TableRow>
                       <TableCell colSpan={6} className="text-center py-8">
                         <div className="flex flex-col items-center">
                           <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
@@ -221,8 +331,8 @@ const AdminVendors = () => {
                           </p>
                         </div>
                       </TableCell>
-                    </TableRow>
-                  ) : (
+                    </TableRow>)
+                  ) : isLoading ? null :(
                     filteredVendors.map((vendor) => (
                       <TableRow key={vendor.id} className="hover:bg-muted/50">
                         <TableCell>
@@ -230,24 +340,24 @@ const AdminVendors = () => {
                             <Avatar>
                               <AvatarImage src={vendor.image} alt={vendor.name} />
                               <AvatarFallback>{getInitials(vendor.name)}</AvatarFallback>
-                            </Avatar>
+                            </Avatar>                                 
                             <div>
                               <div className="font-medium">{vendor.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {vendor.cuisine}
-                              </div>
+                              <div className="text-xs text-muted-foreground">{vendor.cuisine}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{vendor.owner.name}</div>
+
+                            <div className="font-medium">{vendor.owner?.name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {vendor.owner.email}
+                              {vendor.owner?.email}
+
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell >
                           <div className="flex items-center">
                             <Star className="h-4 w-4 mr-1 text-yellow-500 fill-yellow-500" />
                             <span>{vendor.status === "pending" ? "N/A" : vendor.rating}</span>
@@ -279,6 +389,7 @@ const AdminVendors = () => {
                       </TableRow>
                     ))
                   )}
+                    </TableBody>
                 </TableBody>
               </Table>
             </CardContent>
@@ -292,7 +403,7 @@ const AdminVendors = () => {
                 <span>Restaurant Details</span>
                 <div className="flex gap-2">
                   {getStatusBadge(selectedVendor.status)}
-                  {selectedVendor.featured && (
+                 {selectedVendor.featured && (
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                       Featured
                     </Badge>
@@ -309,8 +420,9 @@ const AdminVendors = () => {
                           <img 
                             src={selectedVendor.coverImage || selectedVendor.image} 
                             alt={selectedVendor.name}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-cover object-center"
                           />
+
                           <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/70 to-transparent"></div>
                           <div className="absolute bottom-4 left-4 flex items-center gap-3">
                             <Avatar className="h-14 w-14 border-2 border-white">
@@ -345,17 +457,17 @@ const AdminVendors = () => {
                       </CardContent>
                     </Card>
                     
-                    <Card>
+                    <Card >
                       <CardContent className="p-4">
                         <h3 className="text-lg font-medium mb-4 flex items-center">
                           <User className="h-5 w-5 mr-2 text-primary" />
                           Owner Information
-                        </h3>
-                        
+                          </h3>
                         <div className="space-y-3">
                           <div>
                             <Label className="text-xs text-muted-foreground">Name</Label>
-                            <p>{selectedVendor.owner.name}</p>
+                           <p>{selectedVendor.owner.name}</p>
+
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground">Email</Label>
@@ -384,7 +496,7 @@ const AdminVendors = () => {
                     
                     {selectedVendor.status === "pending" && (
                       <Card>
-                        <CardContent className="p-4">
+                        <CardContent className="p-4" >
                           <h3 className="text-lg font-medium mb-4 flex items-center">
                             <FileText className="h-5 w-5 mr-2 text-primary" />
                             Required Documents
@@ -438,8 +550,8 @@ const AdminVendors = () => {
                   {selectedVendor.status === "suspended" && (
                     <Card className="border-red-300 dark:border-red-800">
                       <CardContent className="p-4">
-                        <h3 className="text-lg font-medium mb-2 text-red-700 dark:text-red-400 flex items-center">
-                          <AlertCircle className="h-5 w-5 mr-2" />
+                        <h3 className="text-lg font-medium mb-2 text-red-700 dark:text-red-400 flex items-center" >
+                        <AlertCircle className="h-5 w-5 mr-2" />
                           Suspension Information
                         </h3>
                         <p className="mb-4">{selectedVendor.suspensionReason}</p>
@@ -454,10 +566,10 @@ const AdminVendors = () => {
                   {selectedVendor.status === "pending" ? (
                     <Card>
                       <CardContent className="p-4">
-                        <h3 className="text-lg font-medium mb-4">Approval Actions</h3>
+                        <h3 className="text-lg font-medium mb-4" >Approval Actions</h3>
                         
                         <div className="space-y-4">
-                          <p>This restaurant is awaiting approval. Please review their information and documents before approving.</p>
+                          <p >This restaurant is awaiting approval. Please review their information and documents before approving.</p>
                           
                           <div className="flex justify-end gap-2">
                             <Button variant="destructive" onClick={() => confirmAction(selectedVendor, "delete")}>
@@ -476,10 +588,10 @@ const AdminVendors = () => {
                     <>
                       <Card>
                         <CardContent className="p-4">
-                          <h3 className="text-lg font-medium mb-4 flex items-center">
+                          <h3 className="text-lg font-medium mb-4 flex items-center" >
                             <BarChart className="h-5 w-5 mr-2 text-primary" />
                             Performance Metrics
-                          </h3>
+                          </h3> 
                           
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <div className="bg-muted/50 p-4 rounded-md">
@@ -515,13 +627,15 @@ const AdminVendors = () => {
                           </div>
                         </CardContent>
                       </Card>
+
                       
                       <Card>
                         <CardContent className="p-4">
-                          <h3 className="text-lg font-medium mb-4 flex items-center">
+                          <h3 className="text-lg font-medium mb-4 flex items-center" >
                             <Settings className="h-5 w-5 mr-2 text-primary" />
                             Restaurant Settings
                           </h3>
+
                           
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -556,7 +670,7 @@ const AdminVendors = () => {
                     </>
                   )}
                   
-                  <div className="flex justify-between gap-2">
+                   <div className="flex justify-between gap-2">
                     <Button 
                       variant="destructive" 
                       onClick={() => confirmAction(selectedVendor, "delete")}
@@ -594,14 +708,15 @@ const AdminVendors = () => {
             </DialogTitle>
             <p className="py-4">
               {actionType === "delete" 
-                ? `Are you sure you want to delete ${selectedVendor?.name}? This action cannot be undone.` 
+                ? `Are you sure you want to delete ${selectedVendor?.name}? This action cannot be undone.`
+
                 : actionType === "suspend"
                 ? `Are you sure you want to suspend ${selectedVendor?.name}? This will temporarily remove them from the platform.`
                 : actionType === "reactivate"
                 ? `Are you sure you want to reactivate ${selectedVendor?.name}? This will restore their visibility on the platform.`
                 : actionType === "approve"
                 ? `Are you sure you want to approve ${selectedVendor?.name}? This will make them visible on the platform.`
-                : actionType === "feature"
+                : actionType === "feature" 
                 ? `Are you sure you want to feature ${selectedVendor?.name}? This will display them prominently in featured sections.`
                 : `Are you sure you want to remove ${selectedVendor?.name} from featured restaurants?`}
             </p>
@@ -622,22 +737,4 @@ const AdminVendors = () => {
     </MainLayout>
   );
 };
-
-const Star = ({ className }) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  );
-};
-
 export default AdminVendors;

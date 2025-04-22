@@ -1,10 +1,11 @@
-
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,17 +32,32 @@ import {
   Upload
 } from "lucide-react";
 
+import EditProfile from "@/pages/customer/EditProfile";
+import DeleteProfile from "@/pages/customer/DeleteProfile";
+
 const Profile = () => {
+  const { toast } = useToast();
   const { currentUser, userRole, logout } = useAuth();
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState("personal");
   const [personalInfo, setPersonalInfo] = useState({
     firstName: currentUser?.displayName?.split(" ")[0] || "",
-    lastName: currentUser?.displayName?.split(" ")[1] || "",
+    lastName: currentUser?.displayName?.split(" ").slice(1).join(" ") || "",
     email: currentUser?.email || "",
     phone: currentUser?.phoneNumber || "",
-    bio: ""
+    bio: "",
+    location: "",
+    profilePicture: null
+  });
+  useEffect(() => {
+    setPersonalInfo({
+        firstName: currentUser?.displayName?.split(" ")[0] || "",
+        lastName: currentUser?.displayName?.split(" ").slice(1).join(" ") || "",
+        email: currentUser?.email || "",
+        phone: currentUser?.phoneNumber || "",
+        profilePicture: currentUser?.photoURL,
+    })
   });
   
   const [addresses, setAddresses] = useState([
@@ -112,10 +128,11 @@ const Profile = () => {
   
   const handlePersonalInfoChange = (e) => {
     const { name, value } = e.target;
-    setPersonalInfo(prev => ({
-      ...prev,
-      [name]: value
-    }));
+        setPersonalInfo(prev => ({
+            ...prev,
+            [name]: value,
+        }));
+
   };
   
   const handlePasswordChange = (e) => {
@@ -139,6 +156,13 @@ const Profile = () => {
       description: "Your profile information has been updated successfully.",
     });
   };
+    const handlePictureUpdate = (e) => {
+        const file = e.target.files[0];
+        setPersonalInfo(prev => ({
+            ...prev,
+            profilePicture: URL.createObjectURL(file),
+        }));
+    };
   
   const handlePasswordUpdate = () => {
     if (passwordFields.new !== passwordFields.confirm) {
@@ -217,7 +241,7 @@ const Profile = () => {
                     <Avatar className="h-24 w-24">
                       <AvatarImage src={currentUser?.photoURL} alt={currentUser?.displayName || "User"} />
                       <AvatarFallback>{getInitials(currentUser?.displayName)}</AvatarFallback>
-                    </Avatar>
+                    </Avatar>                        
                     <Button 
                       variant="outline" 
                       size="icon" 
@@ -226,6 +250,7 @@ const Profile = () => {
                       <Upload className="h-4 w-4" />
                     </Button>
                   </div>
+
                   <h2 className="text-xl font-bold mb-1">{currentUser?.displayName || "User"}</h2>
                   <p className="text-sm text-muted-foreground mb-4">{currentUser?.email}</p>
                   
@@ -327,6 +352,21 @@ const Profile = () => {
                           />
                         </div>
                       </div>
+                        <div>
+                            <Label htmlFor="location">Location</Label>
+                            <Input
+                                id="location"
+                                name="location"
+                                value={personalInfo.location}
+                                onChange={handlePersonalInfoChange}
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="profilePicture">Profile Picture</Label>
+                            <input type="file" id="profilePicture" name="profilePicture" onChange={handlePictureUpdate} />
+
+                        </div>
+
                       
                       <div>
                         <Label htmlFor="email">Email</Label>
@@ -402,12 +442,16 @@ const Profile = () => {
                               </div>
                             </div>
                             <div className="flex space-x-2">
-                              <Button variant="ghost" size="icon">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <Link to="/customer/edit-profile">
+                                <Button variant="ghost" size="icon">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Link to="/customer/delete-profile">
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </Link>
                             </div>
                           </CardContent>
                         </Card>
@@ -449,12 +493,16 @@ const Profile = () => {
                               </div>
                             </div>
                             <div className="flex space-x-2">
-                              <Button variant="ghost" size="icon">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <Link to="/customer/edit-profile">
+                                <Button variant="ghost" size="icon">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Link to="/customer/delete-profile">
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </Link>
                             </div>
                           </CardContent>
                         </Card>

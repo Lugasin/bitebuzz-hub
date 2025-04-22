@@ -1,11 +1,13 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
 import { useAuth } from "@/context/AuthContext";
+import { DeliveryDriver } from "@/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast as useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,65 +29,65 @@ import {
   Wallet,
   Shield,
   BarChart,
-  FileText
+  FileText,
 } from "lucide-react";
 
-// Mock delivery partner data
-const deliveryPartnerData = {
-  firstName: "John",
-  lastName: "Smith",
-  email: "john.smith@example.com",
-  phone: "+1 (123) 456-7895",
-  address: "456 Delivery St, Apt 7B, City, State",
-  vehicleType: "motorcycle",
-  vehicleInfo: "Red Honda Bike",
-  licensePlate: "ABC123",
-  licenseNumber: "DL123456789",
-  emergencyContact: "+1 (123) 456-7899",
-  workingHours: {
-    monday: { isWorking: true, start: "09:00", end: "17:00" },
-    tuesday: { isWorking: true, start: "09:00", end: "17:00" },
-    wednesday: { isWorking: true, start: "09:00", end: "17:00" },
-    thursday: { isWorking: true, start: "09:00", end: "17:00" },
-    friday: { isWorking: true, start: "09:00", end: "17:00" },
-    saturday: { isWorking: false, start: "10:00", end: "15:00" },
-    sunday: { isWorking: false, start: "10:00", end: "15:00" }
-  },
-  isOnline: true,
-  avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-  deliveryRadius: 5,
-  bankInfo: {
-    accountName: "John Smith",
-    accountNumber: "1234567890",
-    bankName: "National Bank"
-  },
-  stats: {
-    deliveriesCompleted: 345,
-    averageRating: 4.8,
-    cancellationRate: "2%",
-    onTimeRate: "98%"
-  }
+
+
+
+
+
+
+
+
+
+
+
+
+
 };
 
+
+
+
+
+
+
 const DeliveryProfile = () => {
-  const { currentUser, logout } = useAuth();
-  const navigate = useNavigate();
-  
+  const { currentUser, logout, loading } = useAuth();
+ const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("personal");
-  const [partnerInfo, setPartnerInfo] = useState(deliveryPartnerData);
-  const [workingHours, setWorkingHours] = useState(deliveryPartnerData.workingHours);
-  const [isOnline, setIsOnline] = useState(deliveryPartnerData.isOnline);
-  
-  const handleInfoChange = (e) => {
-    const { name, value } = e.target;
-    setPartnerInfo(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const [partnerInfo, setPartnerInfo] = useState(null);
+  const [workingHours, setWorkingHours] = useState(null);
+  const [isOnline, setIsOnline] = useState(false);
+
+  useEffect(() => {
+    const fetchDeliveryDriverData = async () => {
+      try {
+        const data = await DeliveryDriver.getDeliveryDriverByFirebaseUid(
+          currentUser.uid
+        );
+        console.log("delivery driver data:", data);
+        setPartnerInfo(data);
+        setWorkingHours(data.workingHours);
+        setIsOnline(data.isOnline);
+      } catch (error) {
+        console.error("Error fetching delivery driver data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load delivery driver profile data.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    if (currentUser) fetchDeliveryDriverData();
+  }, [currentUser]);
   };
-  
+
   const handleNestedInfoChange = (category, field, value) => {
-    setPartnerInfo(prev => ({
+   setPartnerInfo(prev => ({
       ...prev,
       [category]: {
         ...prev[category],
@@ -93,7 +95,7 @@ const DeliveryProfile = () => {
       }
     }));
   };
-  
+
   const handleWorkingHoursChange = (day, field, value) => {
     setWorkingHours(prev => ({
       ...prev,
@@ -103,7 +105,7 @@ const DeliveryProfile = () => {
       }
     }));
   };
-  
+
   const toggleWorkingDay = (day) => {
     setWorkingHours(prev => ({
       ...prev,
@@ -113,7 +115,7 @@ const DeliveryProfile = () => {
       }
     }));
   };
-  
+
   const handleProfileUpdate = () => {
     // Update partner info with working hours
     const updatedInfo = {
@@ -121,15 +123,15 @@ const DeliveryProfile = () => {
       workingHours,
       isOnline
     };
-    
+
     // In a real app, this would save to the database
     console.log("Saving partner info:", updatedInfo);
-    
+
     toast({
       title: "Profile updated",
       description: "Your profile information has been updated successfully.",
     });
-  };
+ };
   
   const handleLogout = () => {
     logout();
@@ -140,13 +142,34 @@ const DeliveryProfile = () => {
     });
   };
   
+  const deleteDeliveryDriver = async () => {
+    try {
+      if (!partnerInfo) {
+        throw new Error("Delivery driver information not available.");
+      }
+      await DeliveryDriver.deleteDeliveryDriver(partnerInfo?.id);
+      toast({
+        title: "Account Deactivated",
+        description: "Your delivery driver account has been successfully deactivated.",
+      });
+      handleLogout();
+    } catch (error) {
+      console.error("Error deactivating delivery driver account:", error);
+      toast({
+        title: "Error",
+        description: "Failed to deactivate your delivery driver account.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   const toggleOnlineStatus = () => {
     setIsOnline(!isOnline);
-    
+
     toast({
       title: isOnline ? "You are now offline" : "You are now online",
       description: isOnline 
-        ? "You won't receive new delivery requests" 
+        ? "You won't receive new delivery requests"
         : "You will start receiving delivery requests",
     });
   };
@@ -156,11 +179,20 @@ const DeliveryProfile = () => {
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
   };
 
+    if (!partnerInfo || !workingHours) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8">
+          <h1 className="text-3xl font-bold mb-6">Loading profile...</h1>
+        </div>
+      </MainLayout>
+    );
+  }
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Delivery Partner Profile</h1>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="col-span-1">
@@ -169,20 +201,19 @@ const DeliveryProfile = () => {
                 <div className="flex flex-col items-center text-center">
                   <div className="relative mb-4">
                     <Avatar className="h-24 w-24">
-                      <AvatarImage src={partnerInfo.avatar} alt={`${partnerInfo.firstName} ${partnerInfo.lastName}`} />
+                      <AvatarImage src={partnerInfo?.avatar} alt={`${partnerInfo.firstName} ${partnerInfo.lastName}`} />
                       <AvatarFallback>{getInitials(partnerInfo.firstName, partnerInfo.lastName)}</AvatarFallback>
                     </Avatar>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
+                    <Button
+                      variant="outline"
+                      size="icon"
                       className="absolute bottom-0 right-0 rounded-full bg-background"
                     >
                       <Upload className="h-4 w-4" />
                     </Button>
                   </div>
                   <h2 className="text-xl font-bold mb-1">{partnerInfo.firstName} {partnerInfo.lastName}</h2>
-                  <p className="text-sm text-muted-foreground mb-2">{currentUser?.email}</p>
-                  
+                  <p className="text-sm text-muted-foreground mb-2">{currentUser?.email}</p>                  
                   <div className="mb-4 flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
                     <span className="text-sm font-medium">{isOnline ? 'Online' : 'Offline'}</span>
@@ -204,36 +235,36 @@ const DeliveryProfile = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-0">
                 <div className="flex flex-col">
-                  <Button 
-                    variant={activeTab === "personal" ? "default" : "ghost"} 
+                  <Button
+                    variant={activeTab === "personal" ? "default" : "ghost"}
                     className="justify-start rounded-none h-14"
                     onClick={() => setActiveTab("personal")}
                   >
                     <User className="h-5 w-5 mr-2" />
                     Personal Information
                   </Button>
-                  <Button 
-                    variant={activeTab === "vehicle" ? "default" : "ghost"} 
+                  <Button
+                    variant={activeTab === "vehicle" ? "default" : "ghost"}
                     className="justify-start rounded-none h-14"
                     onClick={() => setActiveTab("vehicle")}
                   >
                     <Truck className="h-5 w-5 mr-2" />
                     Vehicle Details
                   </Button>
-                  <Button 
-                    variant={activeTab === "schedule" ? "default" : "ghost"} 
+                  <Button
+                    variant={activeTab === "schedule" ? "default" : "ghost"}
                     className="justify-start rounded-none h-14"
                     onClick={() => setActiveTab("schedule")}
                   >
                     <Clock className="h-5 w-5 mr-2" />
                     Working Schedule
                   </Button>
-                  <Button 
-                    variant={activeTab === "earnings" ? "default" : "ghost"} 
+                  <Button
+                    variant={activeTab === "earnings" ? "default" : "ghost"}
                     className="justify-start rounded-none h-14"
                     onClick={() => setActiveTab("earnings")}
                   >
@@ -260,7 +291,7 @@ const DeliveryProfile = () => {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Main Content */}
           <div className="col-span-1 lg:col-span-3">
             <Card>
@@ -268,8 +299,8 @@ const DeliveryProfile = () => {
                 {/* Personal Information */}
                 {activeTab === "personal" && (
                   <div>
-                    <h2 className="text-xl font-bold mb-6">Personal Information</h2>
-                    
+                   <h2 className="text-xl font-bold mb-6">Personal Information</h2>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                       <div className="p-4 bg-muted/50 rounded-md flex items-center">
                         <BarChart className="h-10 w-10 text-primary mr-4" />
@@ -278,7 +309,7 @@ const DeliveryProfile = () => {
                           <p className="text-2xl font-bold">{partnerInfo.stats.deliveriesCompleted}</p>
                         </div>
                       </div>
-                      
+
                       <div className="p-4 bg-muted/50 rounded-md flex items-center">
                         <Star className="h-10 w-10 text-yellow-500 mr-4" />
                         <div>
@@ -287,29 +318,29 @@ const DeliveryProfile = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="firstName">First Name</Label>
-                          <Input 
-                            id="firstName" 
-                            name="firstName" 
+                          <Input
+                            id="firstName"
+                            name="firstName"
                             value={partnerInfo.firstName}
-                            onChange={handleInfoChange}
+                            onChange={(e) => setPartnerInfo((prev) => ({ ...prev, firstName: e.target.value }))}
                           />
                         </div>
                         <div>
                           <Label htmlFor="lastName">Last Name</Label>
-                          <Input 
-                            id="lastName" 
-                            name="lastName" 
+                          <Input
+                            id="lastName"
+                            name="lastName"
                             value={partnerInfo.lastName}
-                            onChange={handleInfoChange}
+                            onChange={(e) => setPartnerInfo((prev) => ({ ...prev, lastName: e.target.value }))}
                           />
                         </div>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="email">Email</Label>
                         <div className="relative">
@@ -318,17 +349,15 @@ const DeliveryProfile = () => {
                             id="email" 
                             name="email" 
                             type="email"
-                            className="pl-10"
+                          className="pl-10"
                             value={partnerInfo.email}
-                            onChange={handleInfoChange}
                             disabled
                           />
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           Contact support to change your email address
                         </p>
-                      </div>
-                      
+                      </div>                      
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="phone">Phone Number</Label>
@@ -338,12 +367,12 @@ const DeliveryProfile = () => {
                               id="phone" 
                               name="phone" 
                               className="pl-10"
-                              value={partnerInfo.phone}
-                              onChange={handleInfoChange}
+                           value={partnerInfo.phone}
+                           onChange={(e) => setPartnerInfo((prev) => ({ ...prev, phone: e.target.value }))}
                             />
                           </div>
                         </div>
-                        <div>
+                       <div>
                           <Label htmlFor="emergencyContact">Emergency Contact</Label>
                           <div className="relative">
                             <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -351,12 +380,12 @@ const DeliveryProfile = () => {
                               id="emergencyContact" 
                               name="emergencyContact" 
                               className="pl-10"
-                              value={partnerInfo.emergencyContact}
-                              onChange={handleInfoChange}
+                           value={partnerInfo.emergencyContact}
+                           onChange={(e) => setPartnerInfo((prev) => ({ ...prev, emergencyContact: e.target.value }))}
                             />
                           </div>
                         </div>
-                      </div>
+                     </div>
                       
                       <div>
                         <Label htmlFor="address">Address</Label>
@@ -367,19 +396,19 @@ const DeliveryProfile = () => {
                             name="address" 
                             className="pl-10 min-h-[80px]"
                             value={partnerInfo.address}
-                            onChange={handleInfoChange}
+                           onChange={(e) => setPartnerInfo((prev) => ({ ...prev, address: e.target.value }))}
                           />
                         </div>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="deliveryRadius">Delivery Radius (km)</Label>
-                        <Input 
-                          id="deliveryRadius" 
-                          name="deliveryRadius" 
-                          type="number"
-                          value={partnerInfo.deliveryRadius}
-                          onChange={handleInfoChange}
+                        <Input
+                         id="deliveryRadius"
+                         name="deliveryRadius"
+                         type="number"
+                         value={partnerInfo.deliveryRadius}
+                         onChange={(e) => setPartnerInfo((prev) => ({ ...prev, deliveryRadius: e.target.value }))}
                         />
                       </div>
                       
@@ -390,11 +419,11 @@ const DeliveryProfile = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Vehicle Details */}
                 {activeTab === "vehicle" && (
                   <div>
-                    <h2 className="text-xl font-bold mb-6">Vehicle Details</h2>
+                  <h2 className="text-xl font-bold mb-6">Vehicle Details</h2>
                     
                     <div className="space-y-4">
                       <div>
@@ -414,15 +443,15 @@ const DeliveryProfile = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      
-                      <div>
+
+                    <div>
                         <Label htmlFor="vehicleInfo">Vehicle Description</Label>
-                        <Input 
-                          id="vehicleInfo" 
-                          name="vehicleInfo" 
+                        <Input
+                         id="vehicleInfo"
+                         name="vehicleInfo"
                           placeholder="e.g., Red Honda Motorcycle"
-                          value={partnerInfo.vehicleInfo}
-                          onChange={handleInfoChange}
+                           value={partnerInfo.vehicleInfo}
+                         onChange={(e) => setPartnerInfo((prev) => ({ ...prev, vehicleInfo: e.target.value }))}
                         />
                       </div>
                       
@@ -430,16 +459,16 @@ const DeliveryProfile = () => {
                         <div>
                           <Label htmlFor="licensePlate">License Plate</Label>
                           <Input 
-                            id="licensePlate" 
-                            name="licensePlate" 
+                         id="licensePlate"
+                         name="licensePlate"
                             value={partnerInfo.licensePlate}
-                            onChange={handleInfoChange}
+                        onChange={(e) => setPartnerInfo((prev) => ({ ...prev, licensePlate: e.target.value }))}
                           />
                         </div>
                         <div>
                           <Label htmlFor="licenseNumber">Driver's License Number</Label>
-                          <Input 
-                            id="licenseNumber" 
+                          <Input
+                            id="licenseNumber"
                             name="licenseNumber" 
                             value={partnerInfo.licenseNumber}
                             onChange={handleInfoChange}
@@ -497,7 +526,7 @@ const DeliveryProfile = () => {
                               {hours.isWorking ? "Working" : "Off"}
                             </Button>
                             
-                            {hours.isWorking && (
+                          {hours.isWorking && (
                               <>
                                 <div className="flex items-center gap-2">
                                   <Input 
@@ -722,14 +751,14 @@ const DeliveryProfile = () => {
                       <div className="space-y-2">
                         <h3 className="font-medium">App Settings</h3>
                         
-                        <div className="space-y-4">
+                        <div className="space-y-4">                        
                           <div className="flex items-center justify-between">
-                            <div>
-                              <Label htmlFor="darkMode">Dark Mode</Label>
-                              <p className="text-sm text-muted-foreground">Enable dark mode</p>
-                            </div>
-                            <Switch id="darkMode" />
-                          </div>
+                           <div>
+                           <Label htmlFor="darkMode">Dark Mode</Label>
+                           <p className="text-sm text-muted-foreground">Enable dark mode</p>
+                           </div>
+                          <Switch id="darkMode" />
+                           </div>
                           
                           <div className="flex items-center justify-between">
                             <div>
@@ -755,7 +784,9 @@ const DeliveryProfile = () => {
                       <div className="pt-4 border-t mt-4">
                         <h3 className="font-medium mb-4 text-destructive">Danger Zone</h3>
                         <Button variant="destructive">
-                          Deactivate Account
+                          <Button variant="destructive" onClick={deleteDeliveryDriver}>
+                          Deactivate Account  
+                         </Button>
                         </Button>
                       </div>
                     </div>
@@ -786,5 +817,4 @@ const Star = ({ className }) => {
     </svg>
   );
 };
-
 export default DeliveryProfile;

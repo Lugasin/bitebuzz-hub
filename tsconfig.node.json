@@ -3,8 +3,7 @@
   "compilerOptions": {
     "composite": true,
     "module": "CommonJS",
-    "types": ["node"],
-    "checkJs": false
+    "types": ["node"]
   },
   "include": [
     "vite.config.ts",

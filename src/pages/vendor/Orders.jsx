@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { Order } from "functions/src/models/order";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +18,7 @@ import {
   ShoppingBag, ChevronRight, Timer
 } from "lucide-react";
 import MainLayout from "@/layouts/MainLayout";
+import { useUser } from "@/context/UserContext.tsx";
 import { format } from "date-fns";
 
 // Order status options
@@ -54,10 +54,11 @@ const StatusBadge = ({ status }) => {
 };
 
 const Orders = () => {
-  const { currentUser, userRole } = useAuth();
+  const { currentUser } = useAuth();
+  const { user } = useUser();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState("active");
@@ -67,42 +68,48 @@ const Orders = () => {
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [processingOrder, setProcessingOrder] = useState(false);
   
-  // Load vendor's orders
+  const fetchOrders = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      console.log("Fetching orders for vendor:", user.id);
+      const fetchedOrders = await Order.getOrdersByVendor(user.id);
+      console.log("Fetched orders:", fetchedOrders);
+      setOrders(fetchedOrders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load orders.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, toast]);
+
   useEffect(() => {
-    if (!currentUser) return;
-    
-    const fetchOrders = () => {
-      try {
-        // Create query for this vendor's orders
-        const q = query(
-          collection(db, "orders"),
-          where("vendorId", "==", currentUser.uid),
-          orderBy("createdAt", "desc")
-        );
-        
-        // Set up real-time listener
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const ordersList = [];
-          querySnapshot.forEach((doc) => {
-            ordersList.push({ id: doc.id, ...doc.data() });
-          });
-          
-          setOrders(ordersList);
-          setLoading(false);
-        }, (error) => {
-          console.error("Error fetching orders:", error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to load orders."
-          });
-          setLoading(false);
-        });
-        
-        // Clean up listener
-        return unsubscribe;
-      } catch (error) {
-        console.error("Error setting up orders listener:", error);
+    if (!user?.id) return;
+    fetchOrders();
+  }, [fetchOrders, user?.id]);
+
+
+  const updateOrderStatus = async (orderId, newStatus, reason = "") => {
+    if (!orderId || !newStatus) return;
+  
+    setProcessingOrder(true);
+  
+    try {
+      console.log(`Updating order ${orderId} to status: ${newStatus}`);
+      const updatedOrder = await Order.updateOrderStatus(orderId, newStatus, reason);
+  
+      toast({
+        title: "Order updated",
+        description: `Order status changed to ${newStatus}.`,
+      });
+    } catch (error) {
+        console.error("Error updating order status:", error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -110,18 +117,25 @@ const Orders = () => {
         });
         setLoading(false);
       }
+    finally {
+        setProcessingOrder(false);
+    }
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder((prev) => ({
+          ...prev,
+          status: newStatus,
+          statusUpdatedAt: new Date().toISOString(),
+          ...(reason ? { cancellationReason: reason } : {}),
+        }));
+      }
     };
-    
-    const unsubscribe = fetchOrders();
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [currentUser, toast]);
+  
+  
   
   // Filter orders based on selected tab
   const getFilteredOrders = () => {
     switch (selectedTab) {
-      case "active":
+      case "active":      
         return orders.filter(order => 
           [ORDER_STATUS.PLACED, ORDER_STATUS.CONFIRMED, ORDER_STATUS.PREPARING, ORDER_STATUS.READY].includes(order.status)
         );
@@ -144,56 +158,6 @@ const Orders = () => {
   const viewOrderDetails = (order) => {
     setSelectedOrder(order);
     setOrderDetailsOpen(true);
-  };
-  
-  // Handle order status update
-  const updateOrderStatus = async (orderId, newStatus, reason = "") => {
-    if (!orderId || !newStatus) return;
-    
-    setProcessingOrder(true);
-    
-    try {
-      const orderRef = doc(db, "orders", orderId);
-      
-      const updateData = {
-        status: newStatus,
-        statusUpdatedAt: new Date().toISOString()
-      };
-      
-      if (reason) {
-        updateData.cancellationReason = reason;
-      }
-      
-      await updateDoc(orderRef, updateData);
-      
-      toast({
-        title: "Order updated",
-        description: `Order status changed to ${newStatus}.`
-      });
-      
-      // Close dialogs if open
-      setCancellationDialogOpen(false);
-      setCancellationReason("");
-      
-      // Update selected order if details dialog is open
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(prev => ({
-          ...prev,
-          status: newStatus,
-          statusUpdatedAt: new Date().toISOString(),
-          ...(reason ? { cancellationReason: reason } : {})
-        }));
-      }
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update order status."
-      });
-    } finally {
-      setProcessingOrder(false);
-    }
   };
   
   // Get next status based on current status
@@ -751,7 +715,7 @@ const Orders = () => {
               variant="destructive" 
               onClick={() => {
                 if (selectedOrder) {
-                  updateOrderStatus(selectedOrder.id, ORDER_STATUS.CANCELLED, cancellationReason);
+                updateOrderStatus(selectedOrder.id, ORDER_STATUS.CANCELLED, cancellationReason);
                 }
               }}
               disabled={processingOrder || !cancellationReason.trim()}

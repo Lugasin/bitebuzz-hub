@@ -1,10 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { db } from '@/lib/firebase'; // Make sure this is imported
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'; // Make sure these are imported
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Make sure these are imported
+import { Button } from '@/components/ui/button'; // Make sure this is imported
+import { Vendor } from 'functions/src/models/vendor';
 import { Link } from 'react-router-dom';
 import { ChefHat, ShoppingBag, Clock, TrendingUp, DollarSign, Utensils } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
@@ -13,6 +14,7 @@ import { formatCurrency } from '@/lib/utils';
 const VendorDashboard = () => {
   const { currentUser } = useAuth();
   const [stats, setStats] = useState({
+
     totalOrders: 0,
     pendingOrders: 0,
     completedOrders: 0,
@@ -27,12 +29,25 @@ const VendorDashboard = () => {
     const fetchDashboardData = async () => {
       if (!currentUser) return;
       
+       let vendor;
       try {
         setIsLoading(true);
         
-        // Get vendor info
-        const vendorId = currentUser.uid;
-        
+       // Get vendor info
+         vendor = await Vendor.getVendorByFirebaseUid(currentUser.uid)
+        if(!vendor){
+          throw new Error("Vendor not found");
+        }
+        console.log("vendor: ", vendor)
+
+        const vendorId = vendor.id;
+        if (!vendorId) {
+          throw new Error("Vendor ID is missing.");
+        }
+          console.log("vendorId: ", vendorId);
+
+
+
         // Fetch orders for this vendor
         const ordersQuery = query(
           collection(db, 'orders'),
@@ -104,6 +119,7 @@ const VendorDashboard = () => {
         
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        console.error(error.message);
       } finally {
         setIsLoading(false);
       }

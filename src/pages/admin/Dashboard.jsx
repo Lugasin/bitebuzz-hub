@@ -1,6 +1,6 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import MainLayout from "@/layouts/MainLayout";
+import { Admin, getAdminByFirebaseUid } from "@/models/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,12 +25,13 @@ import {
   Download,
   Calendar,
   CreditCard,
-  ArrowUpRight,
+  ArrowUpRight,Settings,
   ArrowDownRight
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart as RechartLineChart, Line, PieChart as RechartPieChart, Pie, Cell, Legend } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import { formatDistance } from "date-fns";
+import { useAuth } from "@/context/AuthContext";
 
 // Mock dashboard data
 const dashboardData = {
@@ -206,6 +207,42 @@ const dashboardData = {
 const COLORS = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
 
 const AdminDashboard = () => {
+  const { currentUser } = useAuth();
+  const [adminData, setAdminData] = useState(null);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        if (!currentUser) {
+          console.error("No current user found");
+          return;
+        }        
+        console.log("Fetching admin data for user:", currentUser.uid);
+        const admin = await getAdminByFirebaseUid(currentUser.uid);
+
+        if (!admin) {
+          console.error("Admin not found with Firebase UID:", currentUser.uid);
+          return;
+        }
+        if (!admin) {
+          throw new Error("Admin not found");
+        }
+        setAdminData(admin);
+        console.log("Admin data fetched successfully:", admin);
+      } catch (error) {
+        console.error("Error fetching admin data:", error);
+        // Optionally, display an error message to the user
+      }
+    };
+    if(currentUser){
+      console.log("current user", currentUser)
+    }
+
+    fetchAdminData();
+  }, [currentUser]);
+
+  if (!adminData) return <div>Loading...</div>;
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "processing":
@@ -222,13 +259,13 @@ const AdminDashboard = () => {
   const getAlertIcon = (type) => {
     switch (type) {
       case "approval":
-        return <Store className="h-5 w-5 text-blue-500" />;
+        return <Store className="h-5 w-5 text-blue-500"/>;
       case "system":
-        return <Settings className="h-5 w-5 text-purple-500" />;
+        return <Settings className="h-5 w-5 text-purple-500"/>;
       case "warning":
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
+        return <AlertCircle className="h-5 w-5 text-yellow-500"/>;
       default:
-        return <Flag className="h-5 w-5" />;
+        return <Flag className="h-5 w-5"/>;
     }
   };
   
@@ -243,7 +280,7 @@ const AdminDashboard = () => {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 ">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           
@@ -266,42 +303,41 @@ const AdminDashboard = () => {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <SummaryCard 
-            title="Total Revenue" 
-            value={formatCurrency(dashboardData.revenue.total)} 
-            icon={<DollarSign className="h-5 w-5 text-white" />}
-            change={dashboardData.revenue.growth}
-            iconColor="bg-green-500"
-          />
+              title="Total Revenue"
+              value={formatCurrency(dashboardData.revenue.total)}
+              icon={<DollarSign className="h-5 w-5 text-white" />}
+              change={dashboardData.revenue.growth}
+              iconColor="bg-green-500"
+            />
           
           <SummaryCard 
-            title="Total Orders" 
-            value={dashboardData.orders.total.toLocaleString()} 
-            icon={<ShoppingBag className="h-5 w-5 text-white" />}
-            change={dashboardData.orders.growth}
-            iconColor="bg-blue-500"
-          />
+              title="Total Orders"
+              value={dashboardData.orders.total.toLocaleString()}
+              icon={<ShoppingBag className="h-5 w-5 text-white" />}
+              change={dashboardData.orders.growth}
+              iconColor="bg-blue-500"
+            />
           
           <SummaryCard 
-            title="Total Users" 
-            value={dashboardData.users.total.toLocaleString()} 
-            icon={<Users className="h-5 w-5 text-white" />}
-            change={dashboardData.users.growth}
-            iconColor="bg-purple-500"
-            subtext={`${dashboardData.users.newToday} new today`}
-          />
+              title="Total Users"
+              value={dashboardData.users.total.toLocaleString()}
+              icon={<Users className="h-5 w-5 text-white" />}
+              change={dashboardData.users.growth}
+              iconColor="bg-purple-500"
+              subtext={`${dashboardData.users.newToday} new today`}
+            />
           
           <SummaryCard 
-            title="Restaurants" 
-            value={dashboardData.restaurants.total.toLocaleString()} 
-            icon={<Store className="h-5 w-5 text-white" />}
-            change={dashboardData.restaurants.growth}
-            iconColor="bg-orange-500"
-            subtext={`${dashboardData.restaurants.pending} pending approval`}
-          />
+              title="Restaurants"
+              value={dashboardData.restaurants.total.toLocaleString()}
+              icon={<Store className="h-5 w-5 text-white" />}
+              change={dashboardData.restaurants.growth}
+              iconColor="bg-orange-500"
+              subtext={`${dashboardData.restaurants.pending} pending approval`}
+            />
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Charts */}
           <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Revenue Overview</CardTitle>
@@ -380,7 +416,6 @@ const AdminDashboard = () => {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Orders */}
           <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -431,7 +466,6 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
           
-          {/* Alerts */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Alerts & Notifications</CardTitle>
@@ -484,7 +518,7 @@ const SummaryCard = ({ title, value, icon, change, iconColor, subtext }) => {
             
             <div className="flex items-center mt-1">
               {isPositive ? (
-                <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
+                <ArrowUpRight className="h-4 w-4 text-green-500 mr-1"/>
               ) : (
                 <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
               )}
@@ -508,22 +542,5 @@ const SummaryCard = ({ title, value, icon, change, iconColor, subtext }) => {
   );
 };
 
-const Settings = ({ className }) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="12" cy="12" r="3"></circle>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-    </svg>
-  );
-};
-
 export default AdminDashboard;
+

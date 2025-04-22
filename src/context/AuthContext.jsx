@@ -5,16 +5,20 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-  onAuthStateChanged, 
+  onAuthStateChanged,
   updateProfile,
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
 } from "firebase/auth";
 import { auth, googleProvider, facebookProvider } from "@/lib/firebase";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDoc, doc, serverTimestamp } from "firebase/firestore";
+import { db, getToken } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
 import useApi from "@/hooks/useApi";
+
+const { default: User } = require("../../functions/src/models/user");
+
+
 import { useUser } from "./UserContext.tsx";
 
 // Create the AuthContext
@@ -34,19 +38,19 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('guest');
   const { setUser } = useUser();
- const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { apiRequest } = useApi();
 
-  
 
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-     if (user) {
+      if (user) {
+        setCurrentUser(user);
         try {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
+          const userDoc = await getDoc(doc(db, "Users", user.uid));
+
          if (userDoc.exists()) {
              const userData = userDoc.data();
              setUser(userData);
@@ -61,76 +65,87 @@ export const AuthProvider = ({ children }) => {
         }
       } else {
         setUserRole('guest');
+        setCurrentUser(null)
       }
-     setIsLoading(false);
+      setIsLoading(false);
     });
-
     return unsubscribe;
   }, []);
+    const updateUserData = async (user) => {
+      try {
+        const fcmToken = await getToken();
+        await apiRequest(`/users/me`, "PUT", { token: fcmToken });
+      } catch (error) {
+        console.error("Error updating user data:", error);
+      }
+    };
 
   // Helper function to create a new user profile in Firestore.
   const createUserProfile = async (user, name, role) => {
-    const userRef = doc(db, 'users', user.uid);
-    // Update the Firebase Auth displayName if a name is provided.
-    if (name) {
-      await updateProfile(user, { displayName: name });
-    }
-
-    const userSnapshot = await getDoc(userRef);
-    if (!userSnapshot.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-         displayName: name || user.displayName,
+   try {
+       const userData = {
+        firebase_uid: user.uid,
+        name: name,
         email: user.email,
-        phoneNumber: user.phoneNumber,
-        photoURL: user.photoURL,
-        role: role,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        phoneNumber: user.phoneNumber || '', 
+        photoURL: user.photoURL || '',
+        role: role
+      }
+      await User.createUser(userData);
+      toast({
+        title: "Success",
+        description: "User created successfully!",
       });
+   } catch (error) {
+      
+      console.error("Error creating user profile:", error);
+      throw error;
     }
   };
+  
+
+
 
    // Email/Password login function.
   const login = async (email, password) => {
-   try {
-      const response = await apiRequest("http://localhost:3000/auth/login", "POST", {
+    try {
+      const response = await apiRequest("/auth/login", "POST", {
         email,
-       password,
+        password,
       });
-     if (response.token) {
-       localStorage.setItem("token", response.token);
+      if (response.token) {
+        localStorage.setItem("token", response.token);
       }
-     
       const userCredential = await signInWithEmailAndPassword(
-        auth, 
+        auth,
         email,
         password
       );
-      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+
+      const userDoc = await getDoc(doc(db, "Users", userCredential.user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setUser(userData);
         setUserRole(userData.role);
       }
       toast({
-        title: "Welcome!",
+        await updateUserData(userCredential.user);
         description: "You have been logged in successfully.",
       });
     } catch (error) {
       console.error("Login error:", error);
       let errorMessage = "An error occurred during login.";
      if (error.message === "User not found") {
-        errorMessage = "No account found with this email."; 
+        errorMessage = "No account found with this email.";
       } else if (error.message === "Invalid credentials") {
-        errorMessage = "Incorrect password."; 
+        errorMessage = "Incorrect password.";
       }
        toast({
         variant: "destructive",
          title: "Error",
          description: errorMessage,
        });
-
+      
      throw error;
     }
   };
@@ -143,14 +158,15 @@ export const AuthProvider = ({ children }) => {
          email,
          password,
        });
-       const result = await createUserWithEmailAndPassword(auth, email, password);
-       await createUserProfile(result.user, name, role);
-       toast({
-
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await createUserProfile(result.user, name, role);
+      toast({
          title: "Account created",
          description: "Your account has been created successfully!",
-       });
-    } catch (error) {
+      });
+      
+
+    } catch(error) {
        console.error("Registration error:", error);
        let errorMessage = "An error occurred during registration.";
       if (error.message === "Email is already in use.") {
@@ -158,7 +174,7 @@ export const AuthProvider = ({ children }) => {
       } else if (error.message === "Invalid email format.") {
         errorMessage = "Invalid email format.";
       } else if (error.message === "Password is too weak.") { 
-        errorMessage = "Password is too weak.";
+         errorMessage = "Password is too weak.";
      }
        toast({
          variant: "destructive",
@@ -173,7 +189,8 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async (accountType = "customer") => {
    try {
       const result = await signInWithPopup(auth, googleProvider);
-      await createUserProfile(
+
+     await createUserProfile(
         result.user,
         result.user.displayName || "",
        accountType
@@ -198,7 +215,8 @@ export const AuthProvider = ({ children }) => {
   const signInWithFacebook = async () => {
     try {
       const result = await signInWithPopup(auth, facebookProvider);
-      await createUserProfile(result.user, result.user.displayName || "", "customer");
+
+     await createUserProfile(result.user, result.user.displayName || "", "customer");
      toast({
         title: "Success",
         description: "Signed in with Facebook successfully!",
@@ -249,10 +267,10 @@ export const AuthProvider = ({ children }) => {
       auth,
       'recaptcha-container',
       {
-        size: 'normal', 
-        callback: () => {
+        size: 'normal',
+         callback: () => {
           // reCAPTCHA solved, allow signInWithPhoneNumber.
-        }
+       }
       }
     );
 
@@ -263,7 +281,8 @@ export const AuthProvider = ({ children }) => {
   const verifyOTP = async (confirmationResult, otp) => {
     try {
       const result = await confirmationResult.confirm(otp);
-      const user = result.user; 
+      const user = result.user;
+
       await createUserProfile(user, 'Guest User', 'guest');
      toast({
         title: 'Phone verified',
@@ -320,10 +339,10 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userRole,
-   isLoading,
+    isLoading,
     loginWithGoogle,
-   signInWithFacebook,
-    login,
+    signInWithFacebook,
+      login,
     signUpWithEmail,
     guestLogin,
    setupRecaptcha,

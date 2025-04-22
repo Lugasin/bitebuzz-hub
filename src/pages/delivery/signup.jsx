@@ -1,11 +1,14 @@
 
-import React from "react";
+import React from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { DeliveryDriver } from '@/models/deliveryDriver';
 import MainLayout from "@/layouts/MainLayout";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -27,9 +30,13 @@ const formSchema = z.object({
 });
 
 const DeliverySignup = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUpWithEmail } = useAuth();
   const form = useForm({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
+
     defaultValues: {
       fullName: "",
       email: "",
@@ -43,12 +50,40 @@ const DeliverySignup = () => {
   });
 
   function onSubmit(values) {
-    console.log(values);
-    toast({
-      title: "Application Submitted",
-      description: "We've received your application and will contact you soon!",
-    });
+    console.log('onSubmit values:', values);
+    signUpWithEmail(values.email, 'defaultpassword', 'delivery')
+      .then(async (userCredential) => {
+        try {
+          if (userCredential) {
+            const deliveryDriverData = {
+              fullName: values.fullName,
+              email: values.email,
+              phone: values.phone,
+              city: values.city,
+              vehicle: values.vehicle,
+              license: values.license,
+              experience: values.experience,
+              firebaseUid: userCredential.user.uid,
+            };
+            console.log('deliveryDriverData', deliveryDriverData);
+            await DeliveryDriver.createDeliveryDriver(deliveryDriverData);
+            toast({
+              title: 'Application Submitted',
+              description: "We've received your application and will contact you soon!",
+            });
+            navigate('/delivery/login');
+          } else {
+            throw new Error('User credential not found');
+          }
+        } catch (error) {
+          console.error('Error creating delivery driver:', error);
+        }
+      })
+      .catch((error) => {
+        console.error('Error during signup:', error);
+      });
   }
+
 
   return (
     <MainLayout>
@@ -120,7 +155,7 @@ const DeliverySignup = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>City</FormLabel>
-                          <Select 
+                          <Select
                             onValueChange={field.onChange} 
                             defaultValue={field.value}
                           >
@@ -149,7 +184,7 @@ const DeliverySignup = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Vehicle Type</FormLabel>
-                          <Select 
+                          <Select
                             onValueChange={field.onChange} 
                             defaultValue={field.value}
                           >
@@ -192,7 +227,7 @@ const DeliverySignup = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Delivery Experience (optional)</FormLabel>
-                          <Select 
+                          <Select
                             onValueChange={field.onChange} 
                             defaultValue={field.value}
                           >
