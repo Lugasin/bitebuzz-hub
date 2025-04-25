@@ -1,36 +1,116 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
-    }
-    
-    match /vendors/{vendorId} {
-      allow read: if true;
-      allow write: if request.auth != null && (resource.data.ownerId == request.auth.uid || isAdmin());
-    }
-    
-    match /menu/{itemId} {
-      allow read: if true;
-      allow write: if request.auth != null && (isVendorOwner(resource.data.vendorId) || isAdmin());
-    }
-    
-    match /orders/{orderId} {
-      allow read: if request.auth != null && (resource.data.customerId == request.auth.uid || 
-                                             resource.data.vendorId == request.auth.uid || 
-                                             resource.data.driverId == request.auth.uid || 
-                                             isAdmin());
-      allow write: if request.auth != null;
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
     }
     
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
     }
     
     function isVendorOwner(vendorId) {
-      return get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid;
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerId == request.auth.uid;
+    }
+    
+    function isDriver() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'delivery';
+    }
+    
+    function isCustomer() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'customer';
+    }
+    
+    function isOrderParticipant(orderId) {
+      let order = get(/databases/$(database)/documents/orders/$(orderId));
+      return isAuthenticated() && (
+        order.data.customerId == request.auth.uid ||
+        order.data.vendorId == request.auth.uid ||
+        order.data.driverId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Vendors collection
+    match /vendors/{vendorId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isVendorOwner(vendorId);
+      allow update: if isAuthenticated() && (isVendorOwner(vendorId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Menu items collection
+    match /menu/{itemId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isVendorOwner(resource.data.vendorId);
+      allow update: if isAuthenticated() && (isVendorOwner(resource.data.vendorId) || isAdmin());
+      allow delete: if isAuthenticated() && (isVendorOwner(resource.data.vendorId) || isAdmin());
+    }
+    
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if isOrderParticipant(orderId);
+      allow create: if isCustomer();
+      allow update: if isOrderParticipant(orderId) && (
+        // Customer can only update status to 'cancelled' if order is pending
+        (isCustomer() && request.resource.data.status == 'cancelled' && resource.data.status == 'pending') ||
+        // Vendor can update status to preparing, ready, or cancelled
+        (isVendorOwner(resource.data.vendorId) && 
+          request.resource.data.status in ['preparing', 'ready', 'cancelled']) ||
+        // Driver can update status to picked or delivered
+        (isDriver() && request.resource.data.status in ['picked', 'delivered']) ||
+        // Admin can update any status
+        isAdmin()
+      );
+    }
+    
+    // Deliveries collection
+    match /deliveries/{deliveryId} {
+      allow read: if isOrderParticipant(resource.data.orderId);
+      allow create: if isAdmin() || isVendorOwner(resource.data.vendorId);
+      allow update: if isOrderParticipant(resource.data.orderId) && (
+        // Driver can only update their own delivery status and location
+        (isDriver() && request.auth.uid == resource.data.driverId) ||
+        isAdmin()
+      );
+    }
+    
+    // Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isCustomer() && request.auth.uid == request.resource.data.userId;
+      allow update: if isCustomer() && request.auth.uid == resource.data.userId;
+      allow delete: if isAdmin() || (isCustomer() && request.auth.uid == resource.data.userId);
+    }
+    
+    // Chat messages collection
+    match /chat_messages/{messageId} {
+      allow read: if isOrderParticipant(resource.data.orderId);
+      allow create: if isOrderParticipant(request.resource.data.orderId);
+      allow update: if isAdmin() || request.auth.uid == resource.data.senderId;
+      allow delete: if isAdmin() || request.auth.uid == resource.data.senderId;
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAdmin() || isVendorOwner(resource.data.vendorId);
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow delete: if isAdmin() || (isAuthenticated() && request.auth.uid == resource.data.userId);
     }
   }
 }

@@ -1,194 +1,20 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/layouts/MainLayout";
-import HeroCarousel from "@/components/home/HeroCarousel";
 import { useAuth } from "@/context/AuthContext";
-import QuickBuyAds from "@/components/home/QuickBuyAds";
-import CategorySlider from "@/components/home/CategorySlider";
-import PopularItemsSection from "@/components/home/PopularItemsSection";
-import RestaurantsSection from "@/components/home/RestaurantsSection";
-import CustomizeModal from "@/components/home/CustomizeModal";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase';
-import { Search, Utensils, ShoppingBag } from "lucide-react";
+import { Search, Utensils, ShoppingBag, Clock, Star, Heart } from "lucide-react";
 import { motion } from "framer-motion";
+import { Typography, Carousel, Card, Row, Col, Space, Rate, Tag } from 'antd';
+import { 
+  getPopularItems, 
+  getTopRatedRestaurants, 
+  getTrendingItems,
+  getRecommendedItems,
+  ZAMBIAN_CATEGORIES
+} from "@/services/menuService";
 
-// Featured restaurants data
-const featuredRestaurants = [
-  {
-    id: "1",
-    name: "Chicken King",
-    image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    cuisine: "Chicken",
-    rating: 4.7,
-    deliveryTime: "25-35 min",
-    deliveryFee: 30,
-    distance: "1.2 miles"
-  },
-  {
-    id: "2",
-    name: "Pizza Palace",
-    image: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    cuisine: "Pizza",
-    rating: 4.8,
-    deliveryTime: "30-40 min",
-    deliveryFee: 35,
-    distance: "1.8 miles"
-  },
-  {
-    id: "3",
-    name: "Fresh Fries",
-    image: "https://images.unsplash.com/photo-1685109649408-c5c56ae4428d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    cuisine: "Fast Food",
-    rating: 4.6,
-    deliveryTime: "25-40 min",
-    deliveryFee: 25,
-    distance: "0.9 miles"
-  },
-  {
-    id: "4",
-    name: "Beverage Bar",
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    cuisine: "Beverages",
-    rating: 4.5,
-    deliveryTime: "20-30 min",
-    deliveryFee: 20,
-    distance: "1.5 miles"
-  }
-];
-
-// Popular menu items data
-const popularItems = [
-  {
-    id: "p1",
-    name: "Crispy Chicken Burger",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Chicken King",
-    restaurantName: "Chicken King",
-    price: 70,
-    rating: 4.8,
-    vendorId: "1",
-    sizes: ["Regular", "Large", "Extra Large"],
-    addOns: [
-      { id: "a1", name: "Extra Cheese", price: 10 },
-      { id: "a2", name: "Bacon", price: 15 },
-      { id: "a3", name: "Special Sauce", price: 5 }
-    ]
-  },
-  {
-    id: "p2",
-    name: "Pepperoni Pizza",
-    image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Pizza Palace",
-    restaurantName: "Pizza Palace",
-    price: 95,
-    rating: 4.9,
-    vendorId: "2",
-    sizes: ["Medium", "Large", "Family"],
-    addOns: [
-      { id: "a4", name: "Extra Cheese", price: 15 },
-      { id: "a5", name: "Extra Pepperoni", price: 20 },
-      { id: "a6", name: "Stuffed Crust", price: 25 }
-    ]
-  },
-  {
-    id: "p3",
-    name: "Loaded Fries",
-    image: "https://images.unsplash.com/photo-1639024471283-03518883336d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Fresh Fries",
-    restaurantName: "Fresh Fries",
-    price: 50,
-    rating: 4.7,
-    vendorId: "3",
-    sizes: ["Regular", "Large", "Sharing"],
-    addOns: [
-      { id: "a7", name: "Cheese Sauce", price: 8 },
-      { id: "a8", name: "Bacon Bits", price: 12 },
-      { id: "a9", name: "Jalapeños", price: 5 }
-    ]
-  },
-  {
-    id: "p4",
-    name: "Iced Coffee",
-    image: "https://images.unsplash.com/photo-1578314675691-9d6ebf342c9c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Beverage Bar",
-    restaurantName: "Beverage Bar",
-    price: 25,
-    rating: 4.6,
-    vendorId: "4",
-    sizes: ["Small", "Medium", "Large"],
-    addOns: [
-      { id: "a10", name: "Extra Shot", price: 5 },
-      { id: "a11", name: "Caramel Syrup", price: 5 },
-      { id: "a12", name: "Whipped Cream", price: 5 }
-    ]
-  }
-];
-
-// Popular beverages
-const popularBeverages = [
-  {
-    id: "b1",
-    name: "Strawberry Smoothie",
-    image: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Beverage Bar",
-    restaurantName: "Beverage Bar",
-    price: 35,
-    rating: 4.5,
-    vendorId: "4",
-    sizes: ["Small", "Medium", "Large"],
-    addOns: [
-      { id: "b1", name: "Extra Fruit", price: 8 },
-      { id: "b2", name: "Protein Boost", price: 10 }
-    ]
-  },
-  {
-    id: "b2",
-    name: "Mango Lemonade",
-    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Fresh Fries",
-    restaurantName: "Fresh Fries",
-    price: 28,
-    rating: 4.7,
-    vendorId: "3",
-    sizes: ["Small", "Medium", "Large"],
-    addOns: [
-      { id: "b3", name: "Extra Sweet", price: 3 },
-      { id: "b4", name: "Less Ice", price: 0 }
-    ]
-  },
-  {
-    id: "b3",
-    name: "Chocolate Milkshake",
-    image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Beverage Bar",
-    restaurantName: "Beverage Bar",
-    price: 45,
-    rating: 4.8,
-    vendorId: "4",
-    sizes: ["Small", "Medium", "Large"],
-    addOns: [
-      { id: "b5", name: "Whipped Cream", price: 5 },
-      { id: "b6", name: "Chocolate Sauce", price: 5 }
-    ]
-  },
-  {
-    id: "b4",
-    name: "Iced Tea",
-    image: "https://images.unsplash.com/photo-1556679343-c1917b0e6c52?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    restaurant: "Fresh Fries",
-    restaurantName: "Fresh Fries",
-    price: 20,
-    rating: 4.4,
-    vendorId: "3",
-    sizes: ["Small", "Medium", "Large"],
-    addOns: [
-      { id: "b7", name: "Lemon", price: 3 },
-      { id: "b8", name: "Mint Leaves", price: 5 }
-    ]
-  }
-];
+const { Title, Text } = Typography;
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -213,188 +39,244 @@ const itemVariants = {
 
 const Index = () => {
   const { currentUser } = useAuth();
-  const [selectedItem, setSelectedItem] = useState(null);
-  
-  const openItemModal = (item) => {
-    setSelectedItem(item);
-  };
-  
-  const sendTestNotification = async () => {
-    try {
-      const functions = getFunctions(app);
-      const sendNotification = httpsCallable(functions, 'sendNotification');
-      const response = await sendNotification({
-        tokens: [], 
-        title: 'test',
-        body: 'this is a test notification'
-      });
-      if (response.data && response.data.success) {
-        alert('Notification sent successfully!');
-      } else {
-        alert('Failed to send notification.');
-      }
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      alert('Failed to send notification.');
-    }
-  };
-  
+  const [featuredItems, setFeaturedItems] = useState([]);
+  const [topRestaurants, setTopRestaurants] = useState([]);
+  const [trendingItems, setTrendingItems] = useState([]);
+  const [recommendedItems, setRecommendedItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    
+    const loadData = async () => {
+      try {
+        const [popular, restaurants, trending] = await Promise.all([
+          getPopularItems(5),
+          getTopRatedRestaurants(4),
+          getTrendingItems(4)
+        ]);
+        
+        setFeaturedItems(popular);
+        setTopRestaurants(restaurants);
+        setTrendingItems(trending);
+
+        if (currentUser) {
+          const recommended = await getRecommendedItems(currentUser.uid, 4);
+          setRecommendedItems(recommended);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [currentUser]);
-  
-  const closeItemModal = () => {
-    setSelectedItem(null);
-  };
+
+  const renderItemCard = (item) => (
+    <Card
+      hoverable
+      cover={
+        <img
+          alt={item.name}
+          src={item.imageUrl}
+          style={{ height: 200, objectFit: 'cover' }}
+        />
+      }
+    >
+      <Card.Meta
+        title={
+          <Space direction="vertical" size="small">
+            <Text strong>{item.name}</Text>
+            <Rate disabled defaultValue={item.rating} />
+          </Space>
+        }
+        description={
+          <Space direction="vertical" size="small">
+            <Text>{item.description}</Text>
+            <Text strong>K{item.price.toFixed(2)}</Text>
+            <Space>
+              <Tag icon={<Clock />}>{item.preparationTime} min</Tag>
+              {item.dietaryInfo?.isVegetarian && <Tag color="green">Vegetarian</Tag>}
+              {item.dietaryInfo?.isVegan && <Tag color="green">Vegan</Tag>}
+              {item.dietaryInfo?.isGlutenFree && <Tag color="blue">Gluten Free</Tag>}
+              {item.dietaryInfo?.isSpicy && <Tag color="red">Spicy</Tag>}
+            </Space>
+          </Space>
+        }
+      />
+    </Card>
+  );
 
   return (
     <MainLayout>
-      {/* Hero section with expanded ads */}
-      {currentUser && (
-        <div className="flex justify-center py-4">
-        <Button
-          onClick={sendTestNotification}
-          >
-          Send Test Notification
-        </Button>
-        </div>
-        )}
-      <HeroCarousel />
-      
-      {/* Quick access ads */}
-      <QuickBuyAds />
-      
-      {/* Food categories */}
-      <CategorySlider />
-      
-      {/* Popular food items section */}
-      <PopularItemsSection 
-        items={popularItems} 
-        title="Popular Right Now"
-        linkText="View All"
-        linkUrl="/trending"
-        onItemSelect={openItemModal}
-      />
-      
-      {/* Featured restaurants section */}
-      <RestaurantsSection restaurants={featuredRestaurants} />
-      
-      {/* Popular beverages section */}
-      <PopularItemsSection 
-        items={popularBeverages} 
-        title="Refreshing Drinks"
-        linkText="All Beverages"
-        linkUrl="/beverages"
-        onItemSelect={openItemModal}
-      />
-      
-      {/* How it works section */}
-      <section className="py-12 bg-secondary/50 dark:bg-secondary/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Get your favorite meals delivered in just a few simple steps
-            </p>
-          </div>
-          
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
-          >
-            <motion.div 
-              variants={itemVariants}
-              className="text-center"
-            >
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Browse Restaurants</h3>
-              <p className="text-muted-foreground">
-                Explore a variety of restaurants and cuisines in your area.
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              variants={itemVariants}
-              className="text-center"
-            >
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Utensils className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Choose Your Meal</h3>
-              <p className="text-muted-foreground">
-                Select from a wide range of delicious meals and add them to your cart.
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              variants={itemVariants}
-              className="text-center"
-            >
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Fast Delivery</h3>
-              <p className="text-muted-foreground">
-                Track your order in real-time and enjoy quick delivery to your doorstep.
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-      
-      {/* Become a delivery partner section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="bg-primary text-primary-foreground rounded-2xl overflow-hidden">
-            <div className="flex flex-col md:flex-row">
-              <div className="p-8 md:p-12 md:w-1/2 flex flex-col justify-center">
-                <h2 className="text-3xl font-bold mb-4">Become a Delivery Partner</h2>
-                <p className="mb-8 text-primary-foreground/90">
-                  Join our team of delivery partners and earn money on your own schedule. Fast payments, flexible hours, and great incentives.
-                </p>
-                <div>
-                  <Button variant="secondary" size="lg" asChild>
-                    <Link to="/delivery/signup">
-                      Apply Now
-                    </Link>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="landing-page"
+      >
+        {/* Hero Section */}
+        <section className="hero-section">
+          <Carousel autoplay className="hero-carousel">
+            {featuredItems.map(item => (
+              <div key={item.id} className="hero-slide">
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="hero-image"
+                />
+                <div className="hero-content">
+                  <Title level={1}>{item.name}</Title>
+                  <Text className="hero-description">{item.description}</Text>
+                  <Button type="primary" size="large">
+                    Order Now
                   </Button>
                 </div>
               </div>
-              <div className="md:w-1/2 relative min-h-[300px]">
-                <img 
-                  src="https://images.unsplash.com/photo-1599598177991-ec67b5c31580?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80" 
-                  alt="Delivery Partner" 
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      {/* Featured in section */}
-      <section className="py-12 bg-secondary/30 dark:bg-secondary/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <h2 className="text-xl font-medium text-muted-foreground">Featured In</h2>
-          </div>
-          
-          <div className="flex flex-wrap justify-center items-center gap-12">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/TechCrunch_logo.svg/440px-TechCrunch_logo.svg.png" alt="TechCrunch" className="h-8 opacity-70 grayscale hover:grayscale-0 transition-all duration-300" />
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Forbes_logo.svg/440px-Forbes_logo.svg.png" alt="Forbes" className="h-8 opacity-70 grayscale hover:grayscale-0 transition-all duration-300" />
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Wired_UK_logo.svg/440px-Wired_UK_logo.svg.png" alt="Wired" className="h-8 opacity-70 grayscale hover:grayscale-0 transition-all duration-300" />
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Medium_logo_Monogram.svg/440px-Medium_logo_Monogram.svg.png" alt="Medium" className="h-8 opacity-70 grayscale hover:grayscale-0 transition-all duration-300" />
-          </div>
-        </div>
-      </section>
-      
-      {/* Item customization modal */}
-      {selectedItem && <CustomizeModal item={selectedItem} onClose={closeItemModal} />}
+            ))}
+          </Carousel>
+        </section>
+
+        {/* Categories Section */}
+        <section className="section categories-section">
+          <Title level={2}>Explore Zambian Cuisine</Title>
+          <Row gutter={[24, 24]}>
+            {ZAMBIAN_CATEGORIES.map(category => (
+              <Col key={category.id} xs={24} sm={12} md={8} lg={6}>
+                <Card
+                  hoverable
+                  cover={
+                    <img
+                      src={category.imageUrl}
+                      alt={category.name}
+                      style={{ height: 200, objectFit: 'cover' }}
+                    />
+                  }
+                >
+                  <Card.Meta
+                    title={category.name}
+                    description={category.description}
+                  />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </section>
+
+        {/* Featured Items */}
+        <section className="section featured-section">
+          <Title level={2}>
+            <Star /> Popular Items
+          </Title>
+          <Row gutter={[24, 24]}>
+            {featuredItems.map(item => (
+              <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
+                {renderItemCard(item)}
+              </Col>
+            ))}
+          </Row>
+        </section>
+
+        {/* Top Restaurants */}
+        <section className="section restaurants-section">
+          <Title level={2}>
+            <Heart /> Top Restaurants
+          </Title>
+          <Row gutter={[24, 24]}>
+            {topRestaurants.map(restaurant => (
+              <Col key={restaurant.id} xs={24} sm={12} md={8} lg={6}>
+                <Card
+                  hoverable
+                  cover={
+                    <img
+                      src={restaurant.imageUrl}
+                      alt={restaurant.restaurantName}
+                      style={{ height: 200, objectFit: 'cover' }}
+                    />
+                  }
+                >
+                  <Card.Meta
+                    title={
+                      <Space direction="vertical" size="small">
+                        <Text strong>{restaurant.restaurantName}</Text>
+                        <Rate disabled defaultValue={restaurant.restaurantRating} />
+                      </Space>
+                    }
+                    description={
+                      <Space direction="vertical" size="small">
+                        <Text>{restaurant.description}</Text>
+                        <Text type="secondary">Average delivery time: {restaurant.preparationTime} min</Text>
+                      </Space>
+                    }
+                  />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </section>
+
+        {/* Call to Action */}
+        <section className="section cta-section">
+          <Card className="cta-card">
+            <Title level={2}>Ready to Order?</Title>
+            <Text>Discover the best of Zambian cuisine at your fingertips</Text>
+            <Button type="primary" size="large">
+              Browse Menu
+            </Button>
+          </Card>
+        </section>
+
+        <style jsx>{`
+          .landing-page {
+            padding: 0;
+          }
+          .hero-section {
+            position: relative;
+            height: 600px;
+            margin-bottom: 48px;
+          }
+          .hero-carousel {
+            height: 100%;
+          }
+          .hero-slide {
+            position: relative;
+            height: 600px;
+          }
+          .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .hero-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 48px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            color: white;
+          }
+          .hero-description {
+            font-size: 18px;
+            margin: 16px 0;
+            display: block;
+          }
+          .section {
+            padding: 48px 24px;
+          }
+          .categories-section {
+            background: #f5f5f5;
+          }
+          .cta-section {
+            text-align: center;
+          }
+          .cta-card {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 48px;
+          }
+        `}</style>
+      </motion.div>
     </MainLayout>
   );
 };
