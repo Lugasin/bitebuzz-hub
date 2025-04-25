@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import  {Card}  from "@/components/ui/card";
 import { MapPin, Navigation, Clock } from "lucide-react";
 
 // Temporary Mapbox token - in production, use env variables or Supabase secrets
@@ -198,7 +198,7 @@ const MapTracking = ({
               className="w-full px-3 py-2 border rounded-md mb-2"
               required
             />
-            <Button type="submit" className="w-full">
+             <Button type="submit" className="w-full">
               Load Map
             </Button>
           </form>

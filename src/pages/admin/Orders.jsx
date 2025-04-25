@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import MainLayout from "@/layouts/mainLayout";
+import MainLayout from "@/layouts/MainLayout.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,7 +49,6 @@ import {
 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { getAllOrders, updateOrder, deleteOrder } from "@/models/order";
 
 const AdminOrders = () => {
   const [searchQuery, setSearchQuery] = useState("");

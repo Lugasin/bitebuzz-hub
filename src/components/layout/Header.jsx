@@ -1,11 +1,10 @@
-
-import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ThemeToggle from "@/components/ui/theme-toggle";
+import ModeToggle from "@/components/theme/ModeToggle";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -83,14 +82,14 @@ const Header = () => {
     }
   };
 
-  const getInitials = (name) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
+    const getInitials = (name) => {
+        if (!name) return "U";
+        return name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase();
+    };
 
   return (
     <header
@@ -184,6 +183,13 @@ const Header = () => {
                   </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/contact">
+                    Contact Us
+                  </Link>
+                </Button>
+              </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
         </div>
@@ -214,7 +220,7 @@ const Header = () => {
           </Button>
 
           {/* Theme Toggle */}
-          <ThemeToggle />
+          <ModeToggle />
 
           {/* Cart button */}
           <Button
@@ -372,5 +378,5 @@ const Header = () => {
     </header>
   );
 };
-
+  
 export default Header;

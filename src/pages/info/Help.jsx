@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Search, ShoppingBag, Clock, CreditCard, User, HelpCircle, Map, AlertCircle } from "lucide-react";
 
 const Help = () => {

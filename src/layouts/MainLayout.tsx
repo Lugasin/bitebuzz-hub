@@ -1,6 +1,6 @@
 
 import React from "react";
-import Header from "@/components/layout/Header";
+import Header from "@/components/layout/Header.jsx";
 import Footer from "@/components/layout/Footer";
 import CartDrawer from "@/components/cart/CartDrawer";
 import { motion } from "framer-motion";

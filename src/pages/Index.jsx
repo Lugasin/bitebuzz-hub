@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import HeroCarousel from "@/components/home/HeroCarousel";

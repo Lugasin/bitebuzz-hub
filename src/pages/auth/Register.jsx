@@ -4,9 +4,8 @@ import { Link, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { InputOTP } from "@/components/ui/input-otp";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
@@ -15,6 +14,7 @@ import { Eye, EyeOff, UserPlus, Lock, User, ArrowLeft, Phone } from "lucide-reac
 import { BurgerIcon } from "@/components/ui/icons";
 import { auth } from "@/lib/firebase";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 
 const Register = () => {
   const { loginWithGoogle, isLoading : authIsLoading, isAuthenticated, userRole } = useAuth();

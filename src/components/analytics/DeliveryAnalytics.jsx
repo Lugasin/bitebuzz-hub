@@ -7,7 +7,6 @@ import {
   CardTitle, 
   CardDescription 
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -37,9 +36,7 @@ import {
   CheckCircle,
   AlertCircle,
   ThumbsUp
-} from "lucide-react";
-import { formatZambianCurrency } from "@/utils/zambianCuisine";
-
+} from "lucide-react";import { formatZambianCurrency } from "@/utils/zambianCuisine";
 // Sample data
 const weeklyEarnings = [
   { day: 'Mon', earnings: 420, deliveries: 8 },
@@ -162,9 +159,9 @@ const DeliveryAnalytics = () => {
             Weekly
           </Button>
           <Button variant="outline" onClick={() => setTimeRange('monthly')}>
-            Monthly
+            Monthly 
           </Button>
-          <Button onClick={refreshData} disabled={isLoading}>
+           <Button onClick={refreshData} disabled={isLoading}>
             {isLoading ? 'Refreshing...' : 'Refresh Data'}
           </Button>
         </div>

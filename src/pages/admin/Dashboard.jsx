@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import MainLayout from "@/layouts/MainLayout";
-import { Admin, getAdminByFirebaseUid } from "@/models/admin";
 import { Button } from "@/components/ui/button";
+import { User } from "@/lib/models";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -29,9 +29,8 @@ import {
   ArrowDownRight
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart as RechartLineChart, Line, PieChart as RechartPieChart, Pie, Cell, Legend } from "recharts";
-import { formatCurrency } from "@/lib/utils";
 import { formatDistance } from "date-fns";
-import { useAuth } from "@/context/AuthContext";
+import { formatCurrency } from "@/lib/utils";
 
 // Mock dashboard data
 const dashboardData = {
@@ -207,41 +206,36 @@ const dashboardData = {
 const COLORS = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
 
 const AdminDashboard = () => {
-  const { currentUser } = useAuth();
-  const [adminData, setAdminData] = useState(null);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    const fetchAdminData = async () => {
+    const fetchUserData = async () => {
       try {
-        if (!currentUser) {
+        const currentUser = JSON.parse(localStorage.getItem("user"));
+        if (!currentUser?.uid) {
           console.error("No current user found");
           return;
-        }        
-        console.log("Fetching admin data for user:", currentUser.uid);
-        const admin = await getAdminByFirebaseUid(currentUser.uid);
+        }
+        const adminId = currentUser.uid;
+        console.log("Fetching user data for user:", adminId);
+        const user = await User.getUserById(adminId);
 
-        if (!admin) {
-          console.error("Admin not found with Firebase UID:", currentUser.uid);
+        if (!user) {
+          console.error("User not found with  ID:", adminId);
           return;
         }
-        if (!admin) {
-          throw new Error("Admin not found");
-        }
-        setAdminData(admin);
-        console.log("Admin data fetched successfully:", admin);
+        setUserData(user);
+        console.log("User data fetched successfully:", user);
       } catch (error) {
-        console.error("Error fetching admin data:", error);
+        console.error("Error fetching user data:", error);
         // Optionally, display an error message to the user
       }
     };
-    if(currentUser){
-      console.log("current user", currentUser)
-    }
 
-    fetchAdminData();
-  }, [currentUser]);
+    fetchUserData();
+  }, []);
 
-  if (!adminData) return <div>Loading...</div>;
+  if (!userData) return <div>Loading...</div>;
 
   const getStatusBadge = (status) => {
     switch (status) {

@@ -33,4 +33,24 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   )
 }
 
-export { Badge, badgeVariants }
+const Separator = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(
+  ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "shrink-0 bg-border",
+        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+        className
+      )}
+      aria-orientation={orientation}
+      aria-hidden={decorative}
+      {...props}
+    />
+  )
+);
+Separator.displayName = "Separator";
+
+export { Badge, badgeVariants, Separator };

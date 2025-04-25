@@ -1,11 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase'; // Make sure this is imported
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'; // Make sure these are imported
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Make sure these are imported
 import { Button } from '@/components/ui/button'; // Make sure this is imported
-import { Vendor } from 'functions/src/models/vendor';
 import { Link } from 'react-router-dom';
 import { ChefHat, ShoppingBag, Clock, TrendingUp, DollarSign, Utensils } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
@@ -35,8 +33,8 @@ const VendorDashboard = () => {
         
        // Get vendor info
          vendor = await Vendor.getVendorByFirebaseUid(currentUser.uid)
+        // Get vendor info
         if(!vendor){
-          throw new Error("Vendor not found");
         }
         console.log("vendor: ", vendor)
 

@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Beef, Pizza, Utensils, Coffee, Salad, Cookie } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 // Cuisine categories
 const cuisineCategories = [
   { name: "Chicken", icon: Beef, color: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300" },

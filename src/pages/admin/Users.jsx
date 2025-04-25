@@ -44,7 +44,7 @@ import {
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { User as UserModel } from "@/models"
+import * as UserModel from "../../../functions/src/models/user";
 
 const getInitials = (name) => {
   if (!name) return "U";

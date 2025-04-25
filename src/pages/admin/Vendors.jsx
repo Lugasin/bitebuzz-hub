@@ -26,20 +26,15 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   Search,
-  AlertCircle,
   Download,
   Store,
   Edit,
   Eye,
   MapPin,
   Phone,
-   Clock,
+  Clock,
   Check,
-  X,
-  AlertCircle,
-  Mail,
-  MapPin,
-  Phone,
+  X, Mail, AlertCircle,
   BarChart,
   
   Settings,
@@ -47,16 +42,14 @@ import {
   Trash2,
   Calendar,User,
   FileText,Star,
-  User
-} from "lucide-react";
-import { Vendor } from "@/models";
+
+} from "lucide-react"
+import { Restaurant } from "@/lib/models";
 import {
   ScrollArea,
 } from "@/components/ui/scroll-area";
-import { format, formatDistance } from "date-fns";
+import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
-
-
 const AdminVendors = () => {
   const { currentUser } = useAuth();
   const [vendors, setVendors] = useState([]);
@@ -65,37 +58,38 @@ const AdminVendors = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState(null);
 
+  const fetchVendors = async () => {
+    try {
+      const allVendors = await Restaurant.getAllRestaurants();
+      console.log("Fetched vendors:", allVendors);
 
-  useEffect(() => {
-    const fetchVendors = useCallback(async () => {
-      try {
-        const allVendors = await Vendor.getAllVendors();
-        console.log("Fetched vendors:", allVendors);
-
-        if (!allVendors || !Array.isArray(allVendors)) {
-          console.error("Invalid or empty vendors data received:", allVendors);
-          toast({
-            title: "Error",
-            description: "Failed to load vendors data.",
-            variant: "destructive",
-          });
-        } else {
-            setVendors(allVendors);
-        }
-      } catch (error) {
-        console.error("Error fetching vendors:", error);
-       
+      if (!allVendors || !Array.isArray(allVendors)) {
+        console.error("Invalid or empty vendors data received:", allVendors);
         toast({
           title: "Error",
-          description: `Failed to fetch vendors: ${error.message}`,
+          description: "Failed to load vendors data.",
           variant: "destructive",
         });
-      }finally {
-        setIsLoading(false);
+      } else {
+        setVendors(allVendors);
       }
-    };
-  const [selectedVendor, setSelectedVendor] = useState(null);
-    
+    } catch (error) {
+      console.error("Error fetching vendors:", error);
+
+      toast({
+        title: "Error",
+        description: `Failed to fetch vendors: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log("Fetching vendors...");
+    fetchVendors();
+  }, []);
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [actionType, setActionType] = useState("");
@@ -111,11 +105,6 @@ const AdminVendors = () => {
   };
 
   useEffect(() => {
-    console.log("Fetching vendors...");
-    fetchVendors();
-  }, []);
-
-  useEffect(() => {
     const logVendorsUpdate = async () => {
         try {
             console.log("Vendors state updated:", vendors);
@@ -128,11 +117,10 @@ const AdminVendors = () => {
   }, [vendors]);
 
 
-
   const viewVendorDetails = (vendor) => {
       try{
-          Vendor.getVendorById(vendor.id).then((vendorData) => {
-            setSelectedVendor(vendorData)
+          Restaurant.getRestaurantById(vendor.id).then((restaurantData) => {
+            setSelectedVendor(restaurantData)
           }).catch((error) => {
             console.error("Error in viewVendorDetails:",error)
           });
@@ -160,32 +148,32 @@ const AdminVendors = () => {
           
           switch (actionType) {
               case "suspend":
-                  await Vendor.updateVendor(selectedVendor.id, {status: "suspended"});
+                  await Restaurant.updateVendor(selectedVendor.id, {status: "suspended"});
                   console.log(`Restaurant ${selectedVendor.name} has been suspended`);
                    message = `Restaurant ${selectedVendor.name} has been suspended`;
                   break;
               case "reactivate":
-                  await Vendor.updateVendor(selectedVendor.id, {status: "active"});
+                  await Restaurant.updateVendor(selectedVendor.id, {status: "active"});
                   console.log(`Restaurant ${selectedVendor.name} has been reactivated`);
                    message = `Restaurant ${selectedVendor.name} has been reactivated`;
                   break;
               case "delete":
-                  await Vendor.deleteVendor(selectedVendor.id);
+                  await Restaurant.deleteVendor(selectedVendor.id);
                   console.log(`Restaurant ${selectedVendor.name} has been deleted`);
                    message = `Restaurant ${selectedVendor.name} has been deleted`;
                   break;
               case "approve":
-                  await Vendor.updateVendor(selectedVendor.id, {status: "active"});
+                  await Restaurant.updateVendor(selectedVendor.id, {status: "active"});
                   console.log(`Restaurant ${selectedVendor.name} has been approved`);
                    message = `Restaurant ${selectedVendor.name} has been approved`;
                   break;
               case "feature":
-                  await Vendor.updateVendor(selectedVendor.id, {featured: true});
+                  await Restaurant.updateVendor(selectedVendor.id, {featured: true});
                   console.log(`Restaurant ${selectedVendor.name} is now featured`);
                    message = `Restaurant ${selectedVendor.name} is now featured`;
                   break;
               case "unfeature":
-                  await Vendor.updateVendor(selectedVendor.id, {featured: false});
+                  await Restaurant.updateVendor(selectedVendor.id, {featured: false});
                   console.log(`Restaurant ${selectedVendor.name} has been removed from featured list`);
 
                   message = `Restaurant ${selectedVendor.name} has been removed from featured list`;
@@ -311,7 +299,7 @@ const AdminVendors = () => {
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                <TableBody>
+                </TableHeader>
                   {filteredVendors.length === 0 ? (
                       isLoading ? (<TableRow>
                       <TableCell colSpan={6} className="text-center py-8">
@@ -389,8 +377,6 @@ const AdminVendors = () => {
                       </TableRow>
                     ))
                   )}
-                    </TableBody>
-                </TableBody>
               </Table>
             </CardContent>
           </Card>

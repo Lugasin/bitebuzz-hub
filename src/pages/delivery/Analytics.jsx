@@ -3,34 +3,33 @@ import React, { useEffect, useState } from 'react';
 import DeliveryLayout from "@/layouts/DeliveryLayout";
 import DeliveryAnalytics from "@/components/analytics/DeliveryAnalytics";
 import { useAuth } from '@/context/AuthContext';
-import { getDeliveryDriverByFirebaseUid } from '@/functions/src/models/deliveryDriver';
 
 const DeliveryAnalyticsPage = () => {
   const { currentUser } = useAuth();
-  const [deliveryDriverData, setDeliveryDriverData] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDeliveryDriverData = async () => {
+    const fetchUserData = async () => {
       try {
         if (currentUser) {
-          const driverData = await getDeliveryDriverByFirebaseUid(currentUser.uid);
-          setDeliveryDriverData(driverData);
-          console.log("Delivery driver data fetched:", driverData);
+          const data = await User.getUserById(currentUser.uid);
+          setUserData(data);
+          console.log("User data fetched:", data);
         }
       } catch (error) {
-        console.error("Error fetching delivery driver data:", error);
+        console.error("Error fetching user data:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchDeliveryDriverData();
+    fetchUserData();
   }, [currentUser]);
 
   return (
     <DeliveryLayout>
-      {isLoading ? <p>Loading...</p> : <DeliveryAnalytics deliveryDriverData={deliveryDriverData} />}
+      {isLoading ? <p>Loading...</p> : <DeliveryAnalytics userData={userData} />}
     </DeliveryLayout>
   );
 };

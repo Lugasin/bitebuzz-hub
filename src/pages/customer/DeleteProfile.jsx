@@ -1,7 +1,7 @@
-jsx
-import React, { useEffect } from 'react';
+import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
-import { useApi } from '../../hooks/useApi';
+import  { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 
@@ -10,7 +10,7 @@ function DeleteProfile() {
   const { authUser } = useAuth();
   const api = useApi();
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!authUser) {
       navigate('/');
     }

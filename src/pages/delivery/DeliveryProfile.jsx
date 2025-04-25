@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
@@ -40,19 +39,6 @@ import {
 
 
 
-
-
-
-
-
-};
-
-
-
-
-
-
-
 const DeliveryProfile = () => {
   const { currentUser, logout, loading } = useAuth();
  const navigate = useNavigate();
@@ -84,7 +70,6 @@ const DeliveryProfile = () => {
 
     if (currentUser) fetchDeliveryDriverData();
   }, [currentUser]);
-  };
 
   const handleNestedInfoChange = (category, field, value) => {
    setPartnerInfo(prev => ({

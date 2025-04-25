@@ -2,7 +2,7 @@
 import React from 'react';
 import MainLayout from "@/layouts/MainLayout";
 import MapTracking from "@/components/tracking/MapTracking";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card"; // Corrected import
 import { Button } from "@/components/ui/button";
 import { 
   PhoneCall, 

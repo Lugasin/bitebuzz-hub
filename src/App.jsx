@@ -1,10 +1,9 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext.tsx";
 import { CartProvider } from "@/context/CartContext";
 import { UserProvider } from "@/context/UserContext.tsx";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -41,7 +40,7 @@ import VendorAnalytics from "./pages/vendor/Analytics";
 import DeliveryDashboard from "./pages/delivery/Dashboard";
 import DeliverySignup from "./pages/delivery/signup";
 import DeliveryOrders from "./pages/delivery/Orders";
-import DeliveryProfile from "./pages/delivery/Profile";
+import DeliveryProfile from "./pages/delivery/DeliveryProfile";
 import DeliveryAnalytics from "./pages/delivery/Analytics";
 
 // Admin pages
@@ -74,8 +73,7 @@ const App = () => (
       <TooltipProvider>
         <AuthProvider>
           <UserProvider>
-            <CartProvider>
-              <Toaster />
+            <CartProvider>  
               <Sonner />
               <BrowserRouter>
                 <Routes>

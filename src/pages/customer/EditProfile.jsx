@@ -1,6 +1,4 @@
-jsx
 import React, { useState, useEffect } from 'react';
-import { useApi } from '../../hooks/useApi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 

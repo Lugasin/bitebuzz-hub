@@ -1,8 +1,8 @@
 
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Star, ShoppingBag, Plus, Minus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
