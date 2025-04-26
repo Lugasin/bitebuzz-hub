@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "react-hot-toast";
 
 const CartContext = createContext(undefined);
 
@@ -13,16 +12,16 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [items, setItems] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [total, setTotal] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState("delivery");
-  const { toast } = useToast();
 
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        setCart(JSON.parse(savedCart));
       } catch (error) {
         console.error("Error parsing saved cart:", error);
       }
@@ -30,21 +29,22 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(items));
-  }, [items]);
+    localStorage.setItem("cart", JSON.stringify(cart));
+  }, [cart]);
 
-  const totalItems = items.reduce((total, item) => total + item.quantity, 0);
+  useEffect(() => {
+    // Calculate total whenever cart changes
+    const newTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    setTotal(newTotal);
+  }, [cart]);
+
+  const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
   
-  const subtotal = items.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
-
   // Group items by vendor/restaurant
   const getGroupedItems = () => {
     const grouped = {};
     
-    items.forEach(item => {
+    cart.forEach(item => {
       const vendorId = item.vendorId;
       
       if (!grouped[vendorId]) {
@@ -62,71 +62,45 @@ export const CartProvider = ({ children }) => {
     return grouped;
   };
 
-  const addItem = (item) => {
-    setItems((prevItems) => {
-      const existingItemIndex = prevItems.findIndex((i) => i.id === item.id);
-      
-      if (existingItemIndex > -1) {
-        const newItems = [...prevItems];
-        newItems[existingItemIndex].quantity += item.quantity;
-        
-        toast({
-          variant: "default",
-          title: "Updated cart",
-          description: `${item.name} quantity updated to ${newItems[existingItemIndex].quantity}`,
-          duration: 3000
-        });
-        
-        return newItems;
-      } else {
-        toast({
-          variant: "default",
-          title: "Added to cart",
-          description: `${item.name} added to your cart.`,
-          duration: 3000
-        });
-        
-        return [...prevItems, item];
+  const addToCart = (item) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
+      if (existingItem) {
+        return prevCart.map(cartItem =>
+          cartItem.id === item.id
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
       }
+      toast.success('Item added to cart!');
+      return [...prevCart, { ...item, quantity: 1 }];
     });
-    
-    // Don't auto-open cart when adding items
   };
 
-  const updateQuantity = (id, quantity) => {
-    if (quantity <= 0) {
-      removeItem(id);
+  const removeFromCart = (itemId) => {
+    setCart(prevCart => {
+      const itemToRemove = prevCart.find(item => item.id === itemId);
+      if (itemToRemove) {
+        toast.success('Item removed from cart!');
+      }
+      return prevCart.filter((item) => item.id !== itemId);
+    });
+  };
+
+  const updateQuantity = (itemId, quantity) => {
+    if (quantity < 1) {
+      removeFromCart(itemId);
       return;
     }
-    
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, quantity } : item
+    setCart(prevCart =>
+      prevCart.map(item =>
+        item.id === itemId ? { ...item, quantity } : item
       )
     );
   };
 
-  const removeItem = (id) => {
-    setItems((prevItems) => {
-      const itemToRemove = prevItems.find(item => item.id === id);
-      if (itemToRemove) {
-        toast({
-          title: "Removed from cart",
-          description: `${itemToRemove.name} removed from your cart.`,
-          duration: 3000
-        });
-      }
-      return prevItems.filter((item) => item.id !== id);
-    });
-  };
-
   const clearCart = () => {
-    setItems([]);
-    toast({
-      title: "Cart cleared",
-      description: "All items have been removed from your cart.",
-      duration: 3000
-    });
+    setCart([]);
   };
 
   const openCart = () => setIsOpen(true);
@@ -135,13 +109,13 @@ export const CartProvider = ({ children }) => {
   const setDeliveryOption = (option) => setDeliveryMethod(option);
 
   const value = {
-    items,
+    cart,
+    total,
     isOpen,
     totalItems,
-    subtotal,
     deliveryMethod,
-    addItem,
-    removeItem,
+    addToCart,
+    removeFromCart,
     updateQuantity,
     clearCart,
     openCart,

@@ -6,46 +6,58 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Database configuration
-const dbConfig = {
+// Database connection
+const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'bitebuzz',
-  port: process.env.DB_PORT || 3306
-};
-
-// Create a connection pool
-const pool = mysql.createPool(dbConfig);
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
 // Test database connection
 async function testConnection() {
   try {
     const connection = await pool.getConnection();
-    console.log('Successfully connected to the database!');
+    console.log('Database connection successful!');
     connection.release();
   } catch (error) {
-    console.error('Error connecting to the database:', error);
+    console.error('Database connection failed:', error);
   }
 }
 
-// Test the connection when the server starts
 testConnection();
 
-// Basic route to test server
+// Helper function to execute queries
+async function query(sql, params) {
+  const connection = await pool.getConnection();
+  try {
+    const [results] = await connection.execute(sql, params);
+    return results;
+  } finally {
+    connection.release();
+  }
+}
+
+// API Routes
 app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to BiteBuzz API!' });
+  res.json({ message: 'Welcome to BiteBuzz API' });
 });
 
-// Get popular items
+// Menu endpoints
 app.get('/api/menu/popular', async (req, res) => {
   try {
-    const [rows] = await pool.execute(`
+    const limit = parseInt(req.query.limit) || 10;
+    const items = await query(`
       SELECT 
         mi.*,
         r.name as restaurant_name,
@@ -56,19 +68,19 @@ app.get('/api/menu/popular', async (req, res) => {
       JOIN menu_categories mc ON mi.category_id = mc.id
       WHERE mi.is_popular = true AND mi.is_available = true
       ORDER BY mi.rating DESC
-      LIMIT 10
-    `);
-    res.json(rows);
+      LIMIT ?
+    `, [limit]);
+    res.json(items);
   } catch (error) {
     console.error('Error fetching popular items:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to fetch popular items' });
   }
 });
 
-// Get top restaurants
 app.get('/api/restaurants/top', async (req, res) => {
   try {
-    const [rows] = await pool.execute(`
+    const limit = parseInt(req.query.limit) || 5;
+    const restaurants = await query(`
       SELECT 
         r.*,
         COUNT(DISTINCT mi.id) as menu_item_count,
@@ -78,28 +90,118 @@ app.get('/api/restaurants/top', async (req, res) => {
       WHERE r.is_active = true
       GROUP BY r.id
       ORDER BY r.rating DESC, average_item_rating DESC
-      LIMIT 5
-    `);
-    res.json(rows);
+      LIMIT ?
+    `, [limit]);
+    res.json(restaurants);
   } catch (error) {
     console.error('Error fetching top restaurants:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to fetch top restaurants' });
   }
 });
 
-// Get menu categories
-app.get('/api/menu/categories', async (req, res) => {
+app.get('/api/menu/trending', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM menu_categories');
-    res.json(rows);
+    const limit = parseInt(req.query.limit) || 4;
+    const items = await query(`
+      SELECT 
+        mi.*,
+        r.name as restaurant_name,
+        r.rating as restaurant_rating,
+        mc.name as category_name
+      FROM menu_items mi
+      JOIN restaurants r ON mi.restaurant_id = r.id
+      JOIN menu_categories mc ON mi.category_id = mc.id
+      WHERE mi.is_available = true
+      ORDER BY mi.rating_count DESC, mi.rating DESC
+      LIMIT ?
+    `, [limit]);
+    res.json(items);
   } catch (error) {
-    console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error fetching trending items:', error);
+    res.status(500).json({ error: 'Failed to fetch trending items' });
   }
 });
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.get('/api/menu/recommended', async (req, res) => {
+  try {
+    const { userId, limit } = req.query;
+    const items = await query(`
+      SELECT 
+        mi.*,
+        r.name as restaurant_name,
+        r.rating as restaurant_rating,
+        mc.name as category_name
+      FROM menu_items mi
+      JOIN restaurants r ON mi.restaurant_id = r.id
+      JOIN menu_categories mc ON mi.category_id = mc.id
+      WHERE mi.is_available = true
+      ORDER BY mi.rating DESC
+      LIMIT ?
+    `, [parseInt(limit) || 4]);
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching recommended items:', error);
+    res.status(500).json({ error: 'Failed to fetch recommended items' });
+  }
+});
+
+app.get('/api/menu/category/:categoryId', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const items = await query(`
+      SELECT 
+        mi.*,
+        r.name as restaurant_name,
+        r.rating as restaurant_rating,
+        mc.name as category_name
+      FROM menu_items mi
+      JOIN restaurants r ON mi.restaurant_id = r.id
+      JOIN menu_categories mc ON mi.category_id = mc.id
+      WHERE mi.category_id = ? AND mi.is_available = true
+      ORDER BY mi.rating DESC
+    `, [categoryId]);
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching category items:', error);
+    res.status(500).json({ error: 'Failed to fetch category items' });
+  }
+});
+
+app.get('/api/menu/search', async (req, res) => {
+  try {
+    const { q: searchTerm } = req.query;
+    const items = await query(`
+      SELECT 
+        mi.*,
+        r.name as restaurant_name,
+        r.rating as restaurant_rating,
+        mc.name as category_name
+      FROM menu_items mi
+      JOIN restaurants r ON mi.restaurant_id = r.id
+      JOIN menu_categories mc ON mi.category_id = mc.id
+      WHERE mi.is_available = true
+      AND (
+        mi.name LIKE ? OR
+        mi.description LIKE ? OR
+        r.name LIKE ? OR
+        mc.name LIKE ?
+      )
+      ORDER BY mi.rating DESC
+      LIMIT 20
+    `, [
+      `%${searchTerm}%`,
+      `%${searchTerm}%`,
+      `%${searchTerm}%`,
+      `%${searchTerm}%`
+    ]);
+    res.json(items);
+  } catch (error) {
+    console.error('Error searching menu items:', error);
+    res.status(500).json({ error: 'Failed to search menu items' });
+  }
+});
+
+// Start server
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 }); 

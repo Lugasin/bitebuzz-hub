@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Search, Utensils, ShoppingBag, Clock, Star, Heart } from "lucide-react";
 import { motion } from "framer-motion";
-import { Typography, Carousel, Card, Row, Col, Space, Rate, Tag } from 'antd';
+import { Typography, Carousel, Card, Row, Col, Space, Rate, Tag, Input, message } from 'antd';
 import { 
   getPopularItems, 
   getTopRatedRestaurants, 
   getTrendingItems,
   getRecommendedItems,
+  searchMenuItems,
   ZAMBIAN_CATEGORIES
 } from "@/services/menuService";
 
 const { Title, Text } = Typography;
+const { Search: SearchInput } = Input;
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -39,11 +42,15 @@ const itemVariants = {
 
 const Index = () => {
   const { currentUser } = useAuth();
+  const { addToCart } = useCart();
   const [featuredItems, setFeaturedItems] = useState([]);
   const [topRestaurants, setTopRestaurants] = useState([]);
   const [trendingItems, setTrendingItems] = useState([]);
   const [recommendedItems, setRecommendedItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -64,6 +71,7 @@ const Index = () => {
         }
       } catch (error) {
         console.error('Error loading data:', error);
+        message.error('Failed to load data. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -71,6 +79,30 @@ const Index = () => {
 
     loadData();
   }, [currentUser]);
+
+  const handleSearch = async (value) => {
+    if (!value.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchMenuItems(value);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching:', error);
+      message.error('Failed to search. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddToCart = (item) => {
+    addToCart(item);
+    message.success(`${item.name} added to cart!`);
+  };
 
   const renderItemCard = (item) => (
     <Card
@@ -82,6 +114,16 @@ const Index = () => {
           style={{ height: 200, objectFit: 'cover' }}
         />
       }
+      actions={[
+        <Button
+          type="text" 
+          icon={<ShoppingBag />} 
+          key="add-to-cart"
+          onClick={() => handleAddToCart(item)}
+          >
+          Add to Cart
+        </Button>
+      ]}
     >
       <Card.Meta
         title={
@@ -109,12 +151,41 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
         animate="visible"
         className="landing-page"
       >
+        {/* Search Bar */}
+        <section className="search-section">
+          <SearchInput
+            placeholder="Search for food, restaurants..."
+            allowClear
+            enterButton={<Search />}
+            size="large"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onSearch={handleSearch}
+            loading={isSearching}
+            style={{ maxWidth: 600, margin: '0 auto' }}
+          />
+      </section>
+      
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <section className="section search-results-section">
+            <Title level={2}>Search Results</Title>
+            <Row gutter={[24, 24]}>
+              {searchResults.map(item => (
+                <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
+                  {renderItemCard(item)}
+                </Col>
+              ))}
+            </Row>
+          </section>
+        )}
+
         {/* Hero Section */}
         <section className="hero-section">
           <Carousel autoplay className="hero-carousel">
@@ -139,7 +210,9 @@ const Index = () => {
 
         {/* Categories Section */}
         <section className="section categories-section">
-          <Title level={2}>Explore Zambian Cuisine</Title>
+          <Title level={2}>
+            <Utensils /> Explore Zambian Cuisine
+          </Title>
           <Row gutter={[24, 24]}>
             {ZAMBIAN_CATEGORIES.map(category => (
               <Col key={category.id} xs={24} sm={12} md={8} lg={6}>
@@ -175,7 +248,39 @@ const Index = () => {
               </Col>
             ))}
           </Row>
-        </section>
+      </section>
+      
+        {/* Trending Items */}
+        {trendingItems.length > 0 && (
+          <section className="section trending-section">
+            <Title level={2}>
+              <Star /> Trending Now
+            </Title>
+            <Row gutter={[24, 24]}>
+              {trendingItems.map(item => (
+                <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
+                  {renderItemCard(item)}
+                </Col>
+              ))}
+            </Row>
+          </section>
+        )}
+
+        {/* Recommended Items */}
+        {recommendedItems.length > 0 && (
+          <section className="section recommended-section">
+            <Title level={2}>
+              <Heart /> Recommended for You
+            </Title>
+            <Row gutter={[24, 24]}>
+              {recommendedItems.map(item => (
+                <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
+                  {renderItemCard(item)}
+                </Col>
+              ))}
+            </Row>
+          </section>
+        )}
 
         {/* Top Restaurants */}
         <section className="section restaurants-section">
@@ -224,11 +329,18 @@ const Index = () => {
               Browse Menu
             </Button>
           </Card>
-        </section>
-
+      </section>
+      
         <style jsx>{`
           .landing-page {
             padding: 0;
+          }
+          .search-section {
+            padding: 24px 0;
+            background: #f5f5f5;
+          }
+          .search-results-section {
+            background: #fff;
           }
           .hero-section {
             position: relative;
@@ -252,7 +364,7 @@ const Index = () => {
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 48px;
+            padding: 24px;
             background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
             color: white;
           }
@@ -262,17 +374,10 @@ const Index = () => {
             display: block;
           }
           .section {
-            padding: 48px 24px;
-          }
-          .categories-section {
-            background: #f5f5f5;
-          }
-          .cta-section {
-            text-align: center;
+            padding: 48px 0;
           }
           .cta-card {
-            max-width: 600px;
-            margin: 0 auto;
+            text-align: center;
             padding: 48px;
           }
         `}</style>
