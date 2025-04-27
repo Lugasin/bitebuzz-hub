@@ -16,6 +16,13 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     location POINT,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login TIMESTAMP,
+    failed_login_attempts INT DEFAULT 0,
+    account_locked_until TIMESTAMP,
+    password_changed_at TIMESTAMP,
+    two_factor_enabled BOOLEAN DEFAULT FALSE,
+    two_factor_secret VARCHAR(255),
     INDEX idx_firebase_uid (firebase_uid),
     INDEX idx_email (email)
 );
@@ -235,4 +242,46 @@ CREATE TABLE chat_messages (
     INDEX idx_order_id (order_id),
     INDEX idx_sender_id (sender_id),
     INDEX idx_receiver_id (receiver_id)
+);
+
+-- Create refresh_tokens table
+CREATE TABLE refresh_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_token (token),
+    INDEX idx_user_id (user_id)
+);
+
+-- Create security_logs table
+CREATE TABLE security_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    action VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    status VARCHAR(20) NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_action (action),
+    INDEX idx_created_at (created_at)
+);
+
+-- Create password_reset_tokens table
+CREATE TABLE password_reset_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_token (token),
+    INDEX idx_user_id (user_id)
 );

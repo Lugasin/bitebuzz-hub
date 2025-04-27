@@ -1,5 +1,4 @@
-
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -24,6 +23,10 @@ import OrderDetails from "./pages/customer/OrderDetails";
 import Profile from "./pages/customer/Profile";
 import EditProfile from "./pages/customer/EditProfile";
 import DeleteProfile from "./pages/customer/DeleteProfile";
+
+// Catalog pages
+import BeveragesPage from "./pages/catalog/BeveragesPage";
+import FoodsPage from "./pages/catalog/FoodsPage";
 
 // Advanced features
 import MealPlanningPage from "./pages/mealplanning/Index";
@@ -74,18 +77,34 @@ const App = () => (
         <AuthProvider>
           <UserProvider>
             <CartProvider>  
-              <Sonner />
+              <Toaster />
               <BrowserRouter>
                 <Routes>
-                  <Route path="/" element={<Index />} />
-                   {/* Public Routes (Browse allowed for guests) */}
-                  <Route path="/login" element={<Login />} /> {/* Login/Register are auth routes but publicly accessible */}
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/guest-order" element={<GuestOrder />} /> {/* Assuming guest ordering is allowed */}
-                  <Route path="/restaurants" element={<RestaurantsList />} />
-                  <Route path="/restaurant/:id" element={<RestaurantDetails />} />
-                  <Route path="/meal-planning" element={<MealPlanningPage />} /> {/* Decide if this needs auth */}
-                  <Route path="/track-order/:id" element={<TrackingPage />} /> {/* Decide if this needs auth */}
+                  {/* Public Routes with MainLayout */}
+                  <Route element={<MainLayout />}>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/guest-order" element={<GuestOrder />} />
+                    <Route path="/restaurants" element={<RestaurantsList />} />
+                    <Route path="/restaurant/:id" element={<RestaurantDetails />} />
+                    <Route path="/beverages" element={<BeveragesPage />} />
+                    <Route path="/foods" element={<FoodsPage />} />
+                    <Route path="/meal-planning" element={<MealPlanningPage />} />
+                    <Route path="/track-order/:id" element={<TrackingPage />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/faq" element={<FAQ />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/cookies" element={<Cookies />} />
+                    <Route path="/careers" element={<Careers />} />
+                    <Route path="/help" element={<Help />} />
+                    <Route path="/not-authorized" element={<NotAuthorized />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
+
+                  {/* Customer Routes */}
                   <Route path="/customer" element={<ProtectedRoute roles={["customer"]}><MainLayout /></ProtectedRoute>}>
                     <Route path="checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                     <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -95,7 +114,6 @@ const App = () => (
                     <Route path="edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
                     <Route path="delete-profile" element={<ProtectedRoute><DeleteProfile /></ProtectedRoute>} />
                   </Route>
-                  
                   
                   {/* Vendor Routes */}
                   <Route path="/vendor" element={<ProtectedRoute roles={["vendor"]}><VendorLayout /></ProtectedRoute>}>
@@ -122,23 +140,6 @@ const App = () => (
                     <Route path="vendors" element={<ProtectedRoute><AdminVendors /></ProtectedRoute>} />
                     <Route path="orders" element={<ProtectedRoute><AdminOrders /></ProtectedRoute>} />
                   </Route>
-                  {/* Info routes */}
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/faq" element={<FAQ />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/cookies" element={<Cookies />} />
-                  <Route path="/careers" element={<Careers />} />
-                  <Route path="/help" element={<Help />} />
-                  <Route path="/track-order" element={<TrackingPage />} /> {/* Decide if this needs auth */}
-
-                  {/* Other Routes */}
-                  
-                  <Route path="/not-authorized" element={<NotAuthorized />} />
-
-
-                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
             </CartProvider>

@@ -18,5 +18,13 @@ export default defineConfig({
     alias: {
       "@": "/src",
     },
+  },
+  optimizeDeps: {
+    exclude: ['mysql2']
+  },
+  build: {
+    rollupOptions: {
+      external: ['mysql2', 'mysql2/promise']
+    }
   }
 });

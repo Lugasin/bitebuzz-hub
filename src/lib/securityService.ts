@@ -1,153 +1,151 @@
-import config from './config';
-import * as Sentry from '@sentry/react';
-import { v4 as uuidv4 } from 'uuid';
+import { Request, Response } from 'express';
+import { logger } from './logger';
 
-interface RateLimitState {
+interface RateLimitEntry {
   count: number;
   resetTime: number;
+  blockedUntil?: number;
 }
 
-class SecurityService {
-  private rateLimitMap: Map<string, RateLimitState> = new Map();
+interface SecurityConfig {
+  maxAttempts: number;
+  windowMs: number;
+  blockDuration: number;
+  maxRequestsPerMinute: number;
+}
+
+export class SecurityService {
+  private rateLimits: Map<string, RateLimitEntry>;
+  private blockedIPs: Map<string, number>;
+  private config: SecurityConfig;
 
   constructor() {
-    // Initialize Sentry
-    if (config.monitoring.sentryDsn) {
-      Sentry.init({
-        dsn: config.monitoring.sentryDsn,
-        environment: import.meta.env.MODE,
-        tracesSampleRate: 1.0,
-      });
-    }
-  }
-
-  // Input validation
-  validateInput(data: any, schema: Record<string, any>): { isValid: boolean; errors?: string[] } {
-    const errors: string[] = [];
-
-    for (const [key, rules] of Object.entries(schema)) {
-      if (rules.required && !data[key]) {
-        errors.push(`${key} is required`);
-        continue;
-      }
-
-      if (data[key]) {
-        if (rules.type && typeof data[key] !== rules.type) {
-          errors.push(`${key} must be of type ${rules.type}`);
-        }
-
-        if (rules.pattern && !rules.pattern.test(data[key])) {
-          errors.push(`${key} does not match the required pattern`);
-        }
-
-        if (rules.minLength && data[key].length < rules.minLength) {
-          errors.push(`${key} must be at least ${rules.minLength} characters`);
-        }
-
-        if (rules.maxLength && data[key].length > rules.maxLength) {
-          errors.push(`${key} must not exceed ${rules.maxLength} characters`);
-        }
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined
+    this.rateLimits = new Map();
+    this.blockedIPs = new Map();
+    this.config = {
+      maxAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes
+      blockDuration: parseInt(process.env.IP_BLOCK_DURATION || '3600000', 10), // 1 hour
+      maxRequestsPerMinute: parseInt(process.env.MAX_REQUESTS_PER_MINUTE || '60', 10)
     };
   }
 
-  // Rate limiting
-  checkRateLimit(identifier: string): { allowed: boolean; remaining: number; resetTime: number } {
+  private isIPBlocked(ip: string): boolean {
+    const blockedUntil = this.blockedIPs.get(ip);
+    if (!blockedUntil) return false;
+
+    if (Date.now() > blockedUntil) {
+      this.blockedIPs.delete(ip);
+      return false;
+    }
+
+    return true;
+  }
+
+  private blockIP(ip: string): void {
+    const blockUntil = Date.now() + this.config.blockDuration;
+    this.blockedIPs.set(ip, blockUntil);
+    logger.warn(`IP ${ip} blocked until ${new Date(blockUntil).toISOString()}`);
+  }
+
+  checkRateLimit(ip: string): { allowed: boolean; resetTime?: number } {
+    if (this.isIPBlocked(ip)) {
+      return { allowed: false, resetTime: this.blockedIPs.get(ip) };
+    }
+
     const now = Date.now();
-    const state = this.rateLimitMap.get(identifier) || {
-      count: 0,
-      resetTime: now + config.security.rateLimit.windowMs
-    };
+    const entry = this.rateLimits.get(ip);
 
-    if (now > state.resetTime) {
-      state.count = 0;
-      state.resetTime = now + config.security.rateLimit.windowMs;
+    if (!entry || now > entry.resetTime) {
+      this.rateLimits.set(ip, {
+        count: 1,
+        resetTime: now + this.config.windowMs
+      });
+      return { allowed: true };
     }
 
-    state.count++;
+    if (entry.count >= this.config.maxAttempts) {
+      this.blockIP(ip);
+      return { allowed: false, resetTime: entry.resetTime };
+    }
 
-    this.rateLimitMap.set(identifier, state);
-
-    return {
-      allowed: state.count <= config.security.rateLimit.maxRequests,
-      remaining: Math.max(0, config.security.rateLimit.maxRequests - state.count),
-      resetTime: state.resetTime
-    };
+    entry.count++;
+    this.rateLimits.set(ip, entry);
+    return { allowed: true };
   }
 
-  // Logging
-  log(level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: any) {
-    const logLevel = config.monitoring.loggingLevel;
-    const levels = ['debug', 'info', 'warn', 'error'];
-    
-    if (levels.indexOf(level) >= levels.indexOf(logLevel)) {
-      const logEntry = {
-        timestamp: new Date().toISOString(),
-        level,
-        message,
-        data,
-        traceId: uuidv4()
-      };
+  handleError(error: Error, context: string): void {
+    logger.error(`Security error in ${context}:`, {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+  }
 
-      // Console logging
-      console[level](JSON.stringify(logEntry, null, 2));
+  logSecurityEvent(event: string, details: Record<string, any>): void {
+    logger.info(`Security event: ${event}`, {
+      ...details,
+      timestamp: new Date().toISOString()
+    });
+  }
 
-      // Sentry logging for errors
-      if (level === 'error' && config.monitoring.sentryDsn) {
-        Sentry.captureException(new Error(message), {
-          extra: data
-        });
+  validateRequest(req: Request): { valid: boolean; error?: string } {
+    // Check for common attack patterns
+    if (req.headers['x-forwarded-for']) {
+      return { valid: false, error: 'Direct access required' };
+    }
+
+    // Validate content type for POST requests
+    if (req.method === 'POST' && !req.is('application/json')) {
+      return { valid: false, error: 'Invalid content type' };
+    }
+
+    // Check for suspicious headers
+    const suspiciousHeaders = ['x-requested-with', 'x-csrf-token'];
+    for (const header of suspiciousHeaders) {
+      if (req.headers[header]) {
+        return { valid: false, error: 'Suspicious header detected' };
       }
     }
+
+    return { valid: true };
   }
 
-  // Request tracking
-  trackRequest(req: any, res: any, next: () => void) {
-    const startTime = Date.now();
-    const requestId = uuidv4();
-
-    // Log request start
-    this.log('info', 'Request started', {
-      requestId,
-      method: req.method,
-      path: req.path,
-      ip: req.ip
-    });
-
-    // Add request ID to response
-    res.setHeader('X-Request-ID', requestId);
-
-    // Track response time
-    res.on('finish', () => {
-      const duration = Date.now() - startTime;
-      this.log('info', 'Request completed', {
-        requestId,
-        status: res.statusCode,
-        duration
-      });
-    });
-
-    next();
+  sanitizeInput(input: string): string {
+    // Remove potentially dangerous characters
+    return input.replace(/[<>'"]/g, '');
   }
 
-  // Error handling
-  handleError(error: Error, context?: string) {
-    this.log('error', error.message, {
-      context,
-      stack: error.stack
-    });
+  generateCSRFToken(): string {
+    return require('crypto').randomBytes(32).toString('hex');
+  }
 
-    if (config.monitoring.sentryDsn) {
-      Sentry.captureException(error, {
-        tags: { context }
-      });
+  validateCSRFToken(req: Request, token: string): boolean {
+    const csrfToken = req.headers['x-csrf-token'];
+    return csrfToken === token;
+  }
+
+  cleanup(): void {
+    const now = Date.now();
+    
+    // Clean up expired rate limits
+    for (const [ip, entry] of this.rateLimits.entries()) {
+      if (now > entry.resetTime) {
+        this.rateLimits.delete(ip);
+      }
+    }
+
+    // Clean up expired IP blocks
+    for (const [ip, blockUntil] of this.blockedIPs.entries()) {
+      if (now > blockUntil) {
+        this.blockedIPs.delete(ip);
+      }
     }
   }
 }
 
-export const securityService = new SecurityService(); 
+// Initialize cleanup interval
+const securityService = new SecurityService();
+setInterval(() => securityService.cleanup(), 60000); // Clean up every minute
+
+export { securityService }; 

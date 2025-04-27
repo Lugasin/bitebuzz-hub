@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ModeToggle from "@/components/theme/ModeToggle";
+import ThemeToggle from "@/components/ui/theme-toggle";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -36,7 +36,7 @@ import {
   CreditCard,
   Heart,
   HelpCircle,
-  TicketPercent
+  Percent
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -82,14 +82,14 @@ const Header = () => {
     }
   };
 
-    const getInitials = (name) => {
-        if (!name) return "U";
-        return name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase();
-    };
+  const getInitials = (name) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
 
   return (
     <header
@@ -183,13 +183,6 @@ const Header = () => {
                   </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
-              <NavigationMenuItem>
-                <Button asChild variant="ghost" size="sm">
-                  <Link to="/contact">
-                    Contact Us
-                  </Link>
-                </Button>
-              </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
         </div>
@@ -220,7 +213,7 @@ const Header = () => {
           </Button>
 
           {/* Theme Toggle */}
-          <ModeToggle />
+          <ThemeToggle />
 
           {/* Cart button */}
           <Button
@@ -285,7 +278,7 @@ const Header = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/promos" className="cursor-pointer flex items-center gap-2">
-                    <TicketPercent className="h-4 w-4" />
+                    <Percent className="h-4 w-4" />
                     <span>Promo Codes</span>
                   </Link>
                 </DropdownMenuItem>
@@ -378,5 +371,5 @@ const Header = () => {
     </header>
   );
 };
-  
+
 export default Header;

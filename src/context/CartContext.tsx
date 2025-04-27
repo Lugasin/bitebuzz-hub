@@ -1,6 +1,5 @@
-
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { toast } from "sonner";
 
 export interface CartItem {
   id: string;
@@ -12,6 +11,8 @@ export interface CartItem {
   restaurantName?: string;
   size?: string;
   addOns?: Array<{ id: string; name: string; price: number }>;
+  isAlcoholic?: boolean;
+  ageRestricted?: boolean;
 }
 
 interface GroupedItems {
@@ -37,6 +38,7 @@ interface CartContextType {
   toggleCart: () => void;
   getGroupedItems: () => GroupedItems;
   setDeliveryOption: (option: 'delivery' | 'pickup') => void;
+  verifyAge: () => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -49,11 +51,11 @@ export const useCart = () => {
   return context;
 };
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
-  const { toast } = useToast();
+  const [ageVerified, setAgeVerified] = useState(false);
 
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");
@@ -77,7 +79,23 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     0
   );
 
-  // Group items by vendor/restaurant
+  const verifyAge = () => {
+    if (ageVerified) return true;
+    
+    const hasAlcoholicItems = items.some(item => item.isAlcoholic);
+    if (!hasAlcoholicItems) return true;
+
+    const age = prompt("Please enter your age to verify you are 21 or older:");
+    if (age && parseInt(age) >= 21) {
+      setAgeVerified(true);
+      toast.success("Age verified successfully");
+      return true;
+    }
+    
+    toast.error("You must be 21 or older to purchase alcoholic beverages");
+    return false;
+  };
+
   const getGroupedItems = (): GroupedItems => {
     const grouped: GroupedItems = {};
     
@@ -100,6 +118,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addItem = (item: CartItem) => {
+    if (item.isAlcoholic && !verifyAge()) {
+      return;
+    }
+
     setItems((prevItems) => {
       const existingItemIndex = prevItems.findIndex((i) => i.id === item.id);
       
@@ -107,31 +129,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newItems = [...prevItems];
         newItems[existingItemIndex].quantity += item.quantity;
         
-        toast({
-          variant: "default",
-          title: "Updated cart",
-          description: `${item.name} quantity updated to ${newItems[existingItemIndex].quantity}`,
-          duration: 3000
-        });
+        toast.success("Item quantity updated");
         
         return newItems;
       } else {
-        toast({
-          variant: "default",
-          title: "Added to cart",
-          description: `${item.name} added to your cart.`,
-          duration: 3000
-        });
+        toast.success("Item added to cart");
         
         return [...prevItems, item];
       }
     });
-    
-    // Don't auto-open cart when adding items
   };
 
   const updateQuantity = (id: string, quantity: number) => {
-    if (quantity <= 0) {
+    if (quantity < 1) {
       removeItem(id);
       return;
     }
@@ -147,11 +157,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems((prevItems) => {
       const itemToRemove = prevItems.find(item => item.id === id);
       if (itemToRemove) {
-        toast({
-          title: "Removed from cart",
-          description: `${itemToRemove.name} removed from your cart.`,
-          duration: 3000
-        });
+        toast.success("Item removed from cart");
       }
       return prevItems.filter((item) => item.id !== id);
     });
@@ -159,11 +165,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => {
     setItems([]);
-    toast({
-      title: "Cart cleared",
-      description: "All items have been removed from your cart.",
-      duration: 3000
-    });
+    toast.success("Cart cleared");
   };
 
   const openCart = () => setIsOpen(true);
@@ -185,7 +187,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     closeCart,
     toggleCart,
     getGroupedItems,
-    setDeliveryOption
+    setDeliveryOption,
+    verifyAge
   };
 
   return (

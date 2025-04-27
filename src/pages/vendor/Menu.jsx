@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { db, storage } from "@/lib/firebase";
@@ -16,10 +15,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   PlusCircle, Pencil, Trash2, Image as ImageIcon, 
-  Coffee, Pizza, Utensils, Beef, Cookie, Wine, Sandwich, Beer
+  Coffee, Pizza, Utensils, Beef, Cookie, Wine, Sandwich, Beer, Plus, Edit, Trash
 } from "lucide-react";
 import { zambianBeverages } from "@/utils/zambianCuisine";
 import MainLayout from "@/layouts/MainLayout";
+import { motion } from "framer-motion";
+import { formatCurrency } from "@/lib/utils";
 
 const FOOD_CATEGORIES = [
   { id: "main", name: "Main Course", icon: Utensils },
@@ -74,7 +75,8 @@ const Menu = () => {
     sizes: [],
     hasAddons: false,
     addons: [],
-    image: ""
+    image: "",
+    isZambian: false
   });
   
   // Load vendor's menu items with real-time updates
@@ -195,7 +197,8 @@ const Menu = () => {
       sizes: [],
       hasAddons: false,
       addons: [],
-      image: ""
+      image: "",
+      isZambian: false
     });
     setImageFile(null);
     setImagePreview(null);
@@ -216,7 +219,8 @@ const Menu = () => {
       sizes: item.sizes || [],
       hasAddons: item.addons && item.addons.length > 0,
       addons: item.addons || [],
-      image: item.image
+      image: item.image,
+      isZambian: item.isZambian
     });
     setImagePreview(item.image);
     setIsEditing(true);
@@ -258,7 +262,8 @@ const Menu = () => {
         image: beverage.image,
         vendorId: currentUser.uid,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        isZambian: true
       };
       
       await addDoc(collection(db, "menuItems"), menuItemData);
@@ -315,7 +320,8 @@ const Menu = () => {
         addons: form.hasAddons ? form.addons : [],
         image: imageUrl,
         vendorId: currentUser.uid,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        isZambian: form.isZambian
       };
       
       if (isEditing) {
@@ -390,71 +396,84 @@ const Menu = () => {
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {items.map(item => (
-                          <Card key={item.id} className={`overflow-hidden ${!item.available ? 'opacity-60' : ''}`}>
-                            <div className="relative h-48">
-                              {item.image ? (
-                                <img 
-                                  src={item.image} 
-                                  alt={item.name} 
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                  <ImageIcon className="w-12 h-12 text-muted-foreground" />
-                                </div>
-                              )}
-                              
-                              {item.featured && (
-                                <div className="absolute top-2 left-2 bg-primary px-2 py-1 rounded text-xs font-bold text-primary-foreground">
-                                  Featured
-                                </div>
-                              )}
-                              
-                              {!item.available && (
-                                <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
-                                  <span className="text-lg font-bold text-foreground">Currently Unavailable</span>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <CardHeader>
-                              <CardTitle>{item.name}</CardTitle>
-                            </CardHeader>
-                            
-                            <CardContent>
-                              <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{item.description}</p>
-                              
-                              {item.sizes && item.sizes.length > 0 ? (
-                                <div className="mb-2">
-                                  <span className="text-sm font-medium">Sizes:</span>
-                                  <div className="flex flex-wrap gap-2 mt-1">
-                                    {item.sizes.map(size => (
-                                      <span key={size.option} className="size-option">
-                                        {size.option.charAt(0).toUpperCase() + size.option.slice(1)} - K{parseFloat(size.price).toFixed(2)}
-                                      </span>
-                                    ))}
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            whileHover={{ y: -5 }}
+                          >
+                            <Card className={`overflow-hidden ${!item.available ? 'opacity-60' : ''}`}>
+                              <div className="relative h-48">
+                                {item.image ? (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                    <ImageIcon className="w-12 h-12 text-muted-foreground" />
                                   </div>
-                                </div>
-                              ) : (
-                                <p className="font-bold">K{parseFloat(item.price).toFixed(2)}</p>
-                              )}
+                                )}
+                                
+                                {item.featured && (
+                                  <div className="absolute top-2 left-2 bg-primary px-2 py-1 rounded text-xs font-bold text-primary-foreground">
+                                    Featured
+                                  </div>
+                                )}
+                                
+                                {!item.available && (
+                                  <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                                    <span className="text-lg font-bold text-foreground">Currently Unavailable</span>
+                                  </div>
+                                )}
+                                
+                                {item.isZambian && (
+                                  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold py-1 px-2 rounded">
+                                    Zambian
+                                  </div>
+                                )}
+                              </div>
                               
-                              {item.addons && item.addons.length > 0 && (
-                                <div className="mt-3">
-                                  <span className="text-sm font-medium">Add-ons available</span>
-                                </div>
-                              )}
-                            </CardContent>
-                            
-                            <CardFooter className="flex justify-between">
-                              <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
-                                <Pencil className="h-4 w-4 mr-1" /> Edit
-                              </Button>
-                              <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>
-                                <Trash2 className="h-4 w-4 mr-1" /> Delete
-                              </Button>
-                            </CardFooter>
-                          </Card>
+                              <CardHeader>
+                                <CardTitle>{item.name}</CardTitle>
+                              </CardHeader>
+                              
+                              <CardContent>
+                                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{item.description}</p>
+                                
+                                {item.sizes && item.sizes.length > 0 ? (
+                                  <div className="mb-2">
+                                    <span className="text-sm font-medium">Sizes:</span>
+                                    <div className="flex flex-wrap gap-2 mt-1">
+                                      {item.sizes.map(size => (
+                                        <span key={size.option} className="size-option">
+                                          {size.option.charAt(0).toUpperCase() + size.option.slice(1)} - K{parseFloat(size.price).toFixed(2)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="font-bold">K{parseFloat(item.price).toFixed(2)}</p>
+                                )}
+                                
+                                {item.addons && item.addons.length > 0 && (
+                                  <div className="mt-3">
+                                    <span className="text-sm font-medium">Add-ons available</span>
+                                  </div>
+                                )}
+                              </CardContent>
+                              
+                              <CardFooter className="flex justify-between">
+                                <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
+                                  <Pencil className="h-4 w-4 mr-1" /> Edit
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>
+                                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                                </Button>
+                              </CardFooter>
+                            </Card>
+                          </motion.div>
                         ))}
                       </div>
                     </div>

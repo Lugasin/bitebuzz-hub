@@ -12,7 +12,7 @@ import {
   CheckCircle,
   XCircle,
   AlarmClock,
-  LoaderCircle
+  Loader2
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
@@ -104,7 +104,7 @@ const OrderHistory = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case "processing":
-        return <LoaderCircle className="h-5 w-5 text-blue-500" />;
+        return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
       case "preparing":
         return <AlarmClock className="h-5 w-5 text-yellow-500" />;
       case "delivering":

@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 
 class DriverLocationService {
   // Update driver's current location
@@ -35,7 +35,7 @@ class DriverLocationService {
   async getDriverLocation(driverId: string) {
     try {
       const driverLocationRef = doc(db, 'driver_locations', driverId);
-      const snapshot = await driverLocationRef.get();
+      const snapshot = await getDoc(driverLocationRef);
       return snapshot.data();
     } catch (error) {
       console.error('Error getting driver location:', error);

@@ -1,8 +1,10 @@
+import { apiService } from './apiService';
+
+const API_BASE_URL = 'http://localhost:3000/api';
+
 export const getPopularItems = async (limit = 10) => {
   try {
-    const response = await fetch(`/api/menu/popular?limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to fetch popular items');
-    return await response.json();
+    return await apiService.getPopularItems(limit);
   } catch (error) {
     console.error('Error fetching popular items:', error);
     return [];
@@ -11,9 +13,7 @@ export const getPopularItems = async (limit = 10) => {
 
 export const getTopRatedRestaurants = async (limit = 5) => {
   try {
-    const response = await fetch(`/api/restaurants/top?limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to fetch top restaurants');
-    return await response.json();
+    return await apiService.getTopRatedRestaurants(limit);
   } catch (error) {
     console.error('Error fetching top restaurants:', error);
     return [];
@@ -22,20 +22,16 @@ export const getTopRatedRestaurants = async (limit = 5) => {
 
 export const getTrendingItems = async (limit = 4) => {
   try {
-    const response = await fetch(`/api/menu/trending?limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to fetch trending items');
-    return await response.json();
+    return await apiService.getTrendingItems(limit);
   } catch (error) {
     console.error('Error fetching trending items:', error);
     return [];
   }
 };
 
-export const getRecommendedItems = async (userId, limit = 4) => {
+export const getRecommendedItems = async (limit = 4) => {
   try {
-    const response = await fetch(`/api/menu/recommended?userId=${userId}&limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to fetch recommended items');
-    return await response.json();
+    return await apiService.getRecommendedItems(limit);
   } catch (error) {
     console.error('Error fetching recommended items:', error);
     return [];
@@ -44,9 +40,7 @@ export const getRecommendedItems = async (userId, limit = 4) => {
 
 export const getItemsByCategory = async (categoryId) => {
   try {
-    const response = await fetch(`/api/menu/category/${categoryId}`);
-    if (!response.ok) throw new Error('Failed to fetch category items');
-    return await response.json();
+    return await apiService.getItemsByCategory(categoryId);
   } catch (error) {
     console.error('Error fetching category items:', error);
     return [];
@@ -55,9 +49,7 @@ export const getItemsByCategory = async (categoryId) => {
 
 export const searchMenuItems = async (searchTerm) => {
   try {
-    const response = await fetch(`/api/menu/search?q=${encodeURIComponent(searchTerm)}`);
-    if (!response.ok) throw new Error('Failed to search menu items');
-    return await response.json();
+    return await apiService.searchMenuItems(searchTerm);
   } catch (error) {
     console.error('Error searching menu items:', error);
     return [];

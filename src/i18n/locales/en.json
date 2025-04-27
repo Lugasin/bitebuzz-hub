@@ -1,0 +1,111 @@
+{
+  "common": {
+    "welcome": "Welcome to E-Eats",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "price": "Price: {{price}}",
+    "quantity": "Quantity: {{quantity}}",
+    "total": "Total: {{total}}",
+    "date": "Date: {{date}}",
+    "time": "Time: {{time}}",
+    "status": "Status: {{status}}"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "changePassword": "Change Password",
+    "confirmPassword": "Confirm Password"
+  },
+  "menu": {
+    "home": "Home",
+    "restaurants": "Restaurants",
+    "orders": "Orders",
+    "profile": "Profile",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "restaurant": {
+    "name": "Restaurant Name",
+    "cuisine": "Cuisine",
+    "rating": "Rating",
+    "deliveryTime": "Delivery Time",
+    "minOrder": "Minimum Order",
+    "deliveryFee": "Delivery Fee",
+    "open": "Open",
+    "closed": "Closed",
+    "menu": "Menu",
+    "reviews": "Reviews",
+    "addToCart": "Add to Cart",
+    "viewDetails": "View Details"
+  },
+  "order": {
+    "new": "New Order",
+    "processing": "Processing",
+    "preparing": "Preparing",
+    "ready": "Ready",
+    "onTheWay": "On the Way",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "trackOrder": "Track Order",
+    "orderHistory": "Order History",
+    "orderDetails": "Order Details",
+    "estimatedDelivery": "Estimated Delivery",
+    "courier": "Courier",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "deliveryFee": "Delivery Fee",
+    "total": "Total"
+  },
+  "payment": {
+    "paymentMethod": "Payment Method",
+    "card": "Credit/Debit Card",
+    "cash": "Cash on Delivery",
+    "mobileMoney": "Mobile Money",
+    "payNow": "Pay Now",
+    "processing": "Processing Payment...",
+    "success": "Payment Successful",
+    "failed": "Payment Failed",
+    "retry": "Retry Payment"
+  },
+  "profile": {
+    "personalInfo": "Personal Information",
+    "address": "Delivery Address",
+    "phone": "Phone Number",
+    "preferences": "Preferences",
+    "language": "Language",
+    "notifications": "Notifications",
+    "security": "Security",
+    "deleteAccount": "Delete Account"
+  },
+  "errors": {
+    "network": "Network Error",
+    "server": "Server Error",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "notFound": "Not Found",
+    "validation": "Validation Error",
+    "payment": "Payment Error",
+    "order": "Order Error"
+  },
+  "success": {
+    "orderPlaced": "Order Placed Successfully",
+    "paymentSuccessful": "Payment Successful",
+    "profileUpdated": "Profile Updated",
+    "passwordChanged": "Password Changed",
+    "addressAdded": "Address Added"
+  }
+} 

@@ -1,108 +1,109 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Truck, Clock, DollarSign, MapPin, TrendingUp, User, Calendar } from "lucide-react";
+import { Truck, Clock, DollarSign, MapPin, TrendingUp, User, Calendar, Loader2 } from "lucide-react";
 import { useAuth } from '@/context/AuthContext';
 import { DeliveryDriver } from '@/models/deliveryDriver';
+import { toast } from 'sonner';
 
 const DeliveryDashboard = () => {
-  // Sample data for the delivery dashboard
-  const activeOrders = [
-    {
-      id: "ORD-9217",
-      customer: "Lisa Garcia",
-      restaurant: "Taco Town",
-      address: "789 Pine St, Anytown, USA",
-      items: "3× Street Tacos, 1× Nachos, 2× Horchata",
-      total: "$32.75",
-      status: "transit",
-      time: "5 min ago"
+  const { currentUser } = useAuth();
+  const [deliveryDriver, setDeliveryDriver] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [recentDeliveries, setRecentDeliveries] = useState([]);
+  const [earningsData, setEarningsData] = useState({
+    today: "$0.00",
+    week: "$0.00",
+    month: "$0.00"
+  });
+
+  useEffect(() => {
+    const fetchDeliveryDriver = async () => {
+      try {
+        setLoading(true);
+        const driverData = await DeliveryDriver.getDeliveryDriverByFirebaseUid(currentUser.uid);
+        setDeliveryDriver(driverData);
+        
+        // Fetch all data in parallel
+        const [active, available, recent, earnings] = await Promise.all([
+          driverData.getActiveDeliveries(),
+          driverData.getAvailableOrders(),
+          driverData.getRecentDeliveries(),
+          driverData.getEarnings()
+        ]);
+        
+        setActiveOrders(active);
+        setAvailableOrders(available);
+        setRecentDeliveries(recent);
+        setEarningsData(earnings);
+      } catch (error) {
+        setError(error.message);
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (currentUser) {
+      fetchDeliveryDriver();
     }
-  ];
-  
-  const availableOrders = [
-    {
-      id: "ORD-7429",
-      restaurant: "Burger Palace",
-      address: "123 Main St, Anytown, USA",
-      distance: "1.2 miles",
-      items: 4,
-      total: "$28.97",
-      estimate: "15-20 min"
-    },
-    {
-      id: "ORD-8532",
-      restaurant: "Pizza Heaven",
-      address: "456 Oak Ave, Anytown, USA",
-      distance: "0.8 miles",
-      items: 2,
-      total: "$24.50",
-      estimate: "10-15 min"
+  }, [currentUser]);
+
+  const handleAcceptOrder = async (orderId) => {
+    try {
+      await deliveryDriver.acceptOrder(orderId);
+      const [active, available] = await Promise.all([
+        deliveryDriver.getActiveDeliveries(),
+        deliveryDriver.getAvailableOrders()
+      ]);
+      setActiveOrders(active);
+      setAvailableOrders(available);
+      toast.success('Order accepted successfully');
+    } catch (error) {
+      toast.error('Failed to accept order');
     }
-  ];
-  
-  const recentDeliveries = [
-    {
-      id: "ORD-7210",
-      customer: "Robert Chen",
-      restaurant: "Sushi Express",
-      total: "$42.30",
-      date: "Today, 2:15 PM",
-      tip: "$8.00"
-    },
-    {
-      id: "ORD-7205",
-      customer: "Maria Lopez",
-      restaurant: "Pasta House",
-      total: "$35.45",
-      date: "Today, 12:30 PM",
-      tip: "$7.00"
-    },
-    {
-      id: "ORD-7198",
-      customer: "James Wilson",
-      restaurant: "Curry Corner",
-      total: "$29.99",
-      date: "Today, 11:45 AM",
-      tip: "$6.50"
-    }
-  ];
-  
-  const earningsData = {
-    today: "$125.75",
-    week: "$875.50",
-    month: "$3,240.25"
   };
-  
-    const { currentUser } = useAuth();
-    const [deliveryDriver, setDeliveryDriver] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchDeliveryDriver = async () => {
-            try {
-                setLoading(true);
-                const deliveryDriverData = await DeliveryDriver.getDeliveryDriverByFirebaseUid(currentUser.uid);
-                setDeliveryDriver(deliveryDriverData);
-                console.log('Delivery driver data fetched successfully:', deliveryDriverData);
-            } catch (error) {
-                setError(error.message);
-                console.error('Error fetching delivery driver data:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+  const handleCompleteDelivery = async (orderId) => {
+    try {
+      await deliveryDriver.completeDelivery(orderId);
+      const [active, recent, earnings] = await Promise.all([
+        deliveryDriver.getActiveDeliveries(),
+        deliveryDriver.getRecentDeliveries(),
+        deliveryDriver.getEarnings()
+      ]);
+      setActiveOrders(active);
+      setRecentDeliveries(recent);
+      setEarningsData(earnings);
+      toast.success('Delivery completed successfully');
+    } catch (error) {
+      toast.error('Failed to complete delivery');
+    }
+  };
 
-        fetchDeliveryDriver();
-    }, [currentUser]);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
 
   return (
-    
     <div className="container mx-auto px-4 py-8 pt-20">
       <h1 className="text-3xl font-bold mb-6">Delivery Dashboard</h1>
       
@@ -204,7 +205,12 @@ const DeliveryDashboard = () => {
                           </div>
                           
                           <div className="flex flex-wrap gap-2">
-                            <Button variant="default">Mark as Delivered</Button>
+                            <Button 
+                              variant="default"
+                              onClick={() => handleCompleteDelivery(order.id)}
+                            >
+                              Mark as Delivered
+                            </Button>
                             <Button variant="outline">Navigate</Button>
                             <Button variant="outline">Contact Customer</Button>
                           </div>
@@ -273,7 +279,13 @@ const DeliveryDashboard = () => {
                           </div>
                         </div>
                         
-                        <Button variant="default" className="w-full">Accept Order</Button>
+                        <Button 
+                          variant="default" 
+                          className="w-full"
+                          onClick={() => handleAcceptOrder(order.id)}
+                        >
+                          Accept Order
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -345,22 +357,20 @@ const DeliveryDashboard = () => {
               <div>
                 <h3 className="text-sm font-medium mb-2">Today</h3>
                 <div className="text-2xl font-bold">{earningsData.today}</div>
-                <p className="text-xs text-muted-foreground">From 3 completed deliveries</p>
+                <p className="text-xs text-muted-foreground">From {recentDeliveries.length} completed deliveries</p>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium mb-2">This Week</h3>
                 <div className="text-2xl font-bold">{earningsData.week}</div>
-                <p className="text-xs text-muted-foreground">From 15 completed deliveries</p>
+                <p className="text-xs text-muted-foreground">From {earningsData.weekDeliveries || 0} completed deliveries</p>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium mb-2">This Month</h3>
                 <div className="text-2xl font-bold">{earningsData.month}</div>
-                <p className="text-xs text-muted-foreground">From 42 completed deliveries</p>
+                <p className="text-xs text-muted-foreground">From {earningsData.monthDeliveries || 0} completed deliveries</p>
               </div>
-              
-              <Separator />
               
               <Button variant="outline" className="w-full">View Earnings History</Button>
             </CardContent>

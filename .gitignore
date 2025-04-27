@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 apphosting.local.yaml
+.env
+.env.client

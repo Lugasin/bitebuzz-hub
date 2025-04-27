@@ -1,3 +1,5 @@
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/user.js';
@@ -13,73 +15,57 @@ const dbPool = mysql.createPool({
   queueLimit: 0,
 });
 
+const API_BASE_URL = 'http://localhost:3000/api';
+
 class AuthService {
   static async register(userData) {
     try {
-      const { email, password, name, role } = userData;
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+      const token = await userCredential.user.getIdToken();
       
-      // Check if user already exists
-      const existingUser = await User.getUserByEmail(email);
-      if (existingUser) {
-        throw new Error('User already exists');
-      }
-
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Create user
-      const userId = await User.createUser({
-        ...userData,
-        password: hashedPassword
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(userData)
       });
 
-      return userId;
+      if (!response.ok) {
+        throw new Error('Registration failed');
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error('Error in registration:', error);
+      console.error('Registration error:', error);
       throw error;
     }
   }
 
   static async login(email, password) {
     try {
-      const user = await User.getUserByEmail(email);
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        throw new Error('Invalid password');
-      }
-
-      // Generate JWT token
-      const token = jwt.sign(
-        { 
-          userId: user.id,
-          role: user.role,
-          email: user.email
+      const auth = getAuth();
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const token = await userCredential.user.getIdToken();
+      
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        process.env.VITE_JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+        body: JSON.stringify({ email, password })
+      });
 
-      // Store session
-      await dbPool.query(
-        'INSERT INTO user_sessions (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))',
-        [user.id, token]
-      );
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
 
-      return {
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        }
-      };
+      return await response.json();
     } catch (error) {
-      console.error('Error in login:', error);
+      console.error('Login error:', error);
       throw error;
     }
   }

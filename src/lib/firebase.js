@@ -1,5 +1,5 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
@@ -10,18 +10,16 @@ import { getFirestore} from "firebase/firestore";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyD2p116zPL4PX-VOfZ9qcjnWY_hHSNzMO8",
-  authDomain: "vonsedriverapp.firebaseapp.com",
-  databaseURL: "https://vonsedriverapp-default-rtdb.firebaseio.com",
-  projectId: "vonsedriverapp",
-  storageBucket: "vonsedriverapp.appspot.com",
-  messagingSenderId: "733220650661",
-  appId: "1:733220650661:web:0ef884453f96b6106c974c",
-  measurementId: "G-SM4K5NDYKS"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase only if it hasn't been initialized yet
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);

@@ -1,14 +1,4 @@
-import mysql from 'mysql2/promise';
-
-const dbPool = mysql.createPool({
-  host: process.env.VITE_MYSQL_HOST,
-  user: process.env.VITE_MYSQL_USER,
-  password: process.env.VITE_MYSQL_PASSWORD,
-  database: process.env.VITE_MYSQL_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+const API_BASE_URL = 'http://localhost:3000/api';
 
 // User roles and permissions
 const ROLES = {
@@ -45,15 +35,22 @@ const PERMISSIONS = {
   ]
 };
 
-class User {
+export class User {
   static async createUser(userData) {
     try {
-      const { name, email, password, role, restaurantId } = userData;
-      const [result] = await dbPool.query(
-        'INSERT INTO users (name, email, password, role, restaurant_id) VALUES (?, ?, ?, ?, ?)',
-        [name, email, password, role, restaurantId]
-      );
-      return result.insertId;
+      const response = await fetch(`${API_BASE_URL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create user');
+      }
+
+      return await response.json();
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
@@ -62,64 +59,90 @@ class User {
 
   static async getAllUsers() {
     try {
-      const [rows] = await dbPool.query('SELECT * FROM users');
-      return rows;
+      const response = await fetch(`${API_BASE_URL}/users`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      return await response.json();
     } catch (error) {
-      console.error('Error getting all users:', error);
+      console.error('Error fetching users:', error);
       throw error;
     }
   }
 
   static async getUserById(id) {
     try {
-      const [rows] = await dbPool.query('SELECT * FROM users WHERE id = ?', [id]);
-      return rows[0];
+      const response = await fetch(`${API_BASE_URL}/users/${id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch user');
+      }
+      return await response.json();
     } catch (error) {
-      console.error(`Error getting user by ID ${id}:`, error);
+      console.error('Error fetching user:', error);
       throw error;
     }
   }
 
   static async getUserByEmail(email) {
     try {
-      const [rows] = await dbPool.query('SELECT * FROM users WHERE email = ?', [email]);
-      return rows[0];
+      const response = await fetch(`${API_BASE_URL}/users/email/${email}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch user');
+      }
+      return await response.json();
     } catch (error) {
-      console.error(`Error getting user by email ${email}:`, error);
+      console.error('Error fetching user:', error);
       throw error;
     }
   }
 
   static async updateUser(id, userData) {
     try {
-      const { name, email, role, restaurantId } = userData;
-      await dbPool.query(
-        'UPDATE users SET name = ?, email = ?, role = ?, restaurant_id = ? WHERE id = ?',
-        [name, email, role, restaurantId, id]
-      );
-      return true;
+      const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error(`Error updating user ${id}:`, error);
+      console.error('Error updating user:', error);
       throw error;
     }
   }
 
   static async deleteUser(id) {
     try {
-      await dbPool.query('DELETE FROM users WHERE id = ?', [id]);
+      const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete user');
+      }
+
       return true;
     } catch (error) {
-      console.error(`Error deleting user ${id}:`, error);
+      console.error('Error deleting user:', error);
       throw error;
     }
   }
 
   static async getUsersByRole(role) {
     try {
-      const [rows] = await dbPool.query('SELECT * FROM users WHERE role = ?', [role]);
-      return rows;
+      const response = await fetch(`${API_BASE_URL}/users/role/${role}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      return await response.json();
     } catch (error) {
-      console.error(`Error getting users by role ${role}:`, error);
+      console.error('Error fetching users:', error);
       throw error;
     }
   }
@@ -137,5 +160,3 @@ class User {
     return PERMISSIONS[role] || [];
   }
 }
-
-export default User;

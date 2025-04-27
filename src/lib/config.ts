@@ -1,4 +1,7 @@
 interface Config {
+  api: {
+    baseUrl: string;
+  };
   firebase: {
     apiKey: string;
     authDomain: string;
@@ -30,6 +33,9 @@ interface Config {
 }
 
 const config: Config = {
+  api: {
+    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  },
   firebase: {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -44,7 +50,7 @@ const config: Config = {
     secretKey: import.meta.env.VITE_STRIPE_SECRET_KEY,
   },
   maps: {
-    apiKey: 'AIzaSyAuIfyx24biZ4kHyU46p8Fg6rq8JYw6mLM',
+    apiKey: import.meta.env.VITE_MAPS_API_KEY,
   },
   security: {
     rateLimit: {
