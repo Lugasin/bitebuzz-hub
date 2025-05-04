@@ -1,20 +1,11 @@
 
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import MainLayout from "@/layouts/MainLayout";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Search, 
-  Star, 
-  Clock, 
-  MapPin,
-  Filter,
-  SlidersHorizontal
-} from "lucide-react";
+import { Search, Star, Clock, MapPin, SlidersHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Mock data for restaurants
@@ -66,30 +57,6 @@ const restaurants = [
     distance: "1.5 miles",
     priceRange: "$$",
     tags: ["Beverages", "Coffee", "Desserts"]
-  },
-  {
-    id: "5",
-    name: "Burger Joint",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    cuisine: "Burgers",
-    rating: 4.3,
-    deliveryTime: "20-35 min",
-    deliveryFee: 28,
-    distance: "1.7 miles",
-    priceRange: "$$",
-    tags: ["Burgers", "Fast Food"]
-  },
-  {
-    id: "6",
-    name: "Veggie Delight",
-    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1100&q=80",
-    cuisine: "Vegetarian",
-    rating: 4.9,
-    deliveryTime: "35-45 min",
-    deliveryFee: 40,
-    distance: "2.2 miles",
-    priceRange: "$$$",
-    tags: ["Vegetarian", "Healthy", "Vegan"]
   }
 ];
 
@@ -132,77 +99,75 @@ const RestaurantsList = () => {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Restaurants</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Restaurants</h1>
+      
+      {/* Search and filter */}
+      <div className="mb-8">
+        <form onSubmit={handleSearch} className="relative flex mb-4">
+          <Input
+            type="search"
+            placeholder="Search for restaurants..."
+            className="pr-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Button type="submit" variant="ghost" className="absolute right-0 top-0 h-full">
+            <Search className="h-5 w-5" />
+          </Button>
+        </form>
         
-        {/* Search and filter */}
-        <div className="mb-8">
-          <form onSubmit={handleSearch} className="relative flex mb-4">
-            <Input
-              type="search"
-              placeholder="Search for restaurants..."
-              className="pr-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Button type="submit" variant="ghost" className="absolute right-0 top-0 h-full">
-              <Search className="h-5 w-5" />
-            </Button>
-          </form>
+        <Tabs defaultValue="all" className="w-full" onValueChange={setActiveFilter}>
+          <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-4">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="chicken">Chicken</TabsTrigger>
+            <TabsTrigger value="pizza">Pizza</TabsTrigger>
+            <TabsTrigger value="fast food">Fast Food</TabsTrigger>
+            <TabsTrigger value="beverages">Beverages</TabsTrigger>
+            <TabsTrigger value="vegetarian">Vegetarian</TabsTrigger>
+            <TabsTrigger value="burgers">Burgers</TabsTrigger>
+          </TabsList>
           
-          <Tabs defaultValue="all" className="w-full" onValueChange={setActiveFilter}>
-            <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-4">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="chicken">Chicken</TabsTrigger>
-              <TabsTrigger value="pizza">Pizza</TabsTrigger>
-              <TabsTrigger value="fast food">Fast Food</TabsTrigger>
-              <TabsTrigger value="beverages">Beverages</TabsTrigger>
-              <TabsTrigger value="vegetarian">Vegetarian</TabsTrigger>
-              <TabsTrigger value="burgers">Burgers</TabsTrigger>
-            </TabsList>
-            
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-muted-foreground">
-                {filteredRestaurants.length} restaurants found
-              </p>
-              <Button variant="outline" size="sm">
-                <SlidersHorizontal className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
-            </div>
-            
-            <TabsContent value="all" className="mt-0">
-              <RestaurantGrid restaurants={filteredRestaurants} />
-            </TabsContent>
-            
-            <TabsContent value="chicken" className="mt-0">
-              <RestaurantGrid restaurants={filteredRestaurants} />
-            </TabsContent>
-            
-            <TabsContent value="pizza" className="mt-0">
-              <RestaurantGrid restaurants={filteredRestaurants} />
-            </TabsContent>
-            
-            <TabsContent value="fast food" className="mt-0">
-              <RestaurantGrid restaurants={filteredRestaurants} />
-            </TabsContent>
-            
-            <TabsContent value="beverages" className="mt-0">
-              <RestaurantGrid restaurants={filteredRestaurants} />
-            </TabsContent>
-            
-            <TabsContent value="vegetarian" className="mt-0">
-              <RestaurantGrid restaurants={filteredRestaurants} />
-            </TabsContent>
-            
-            <TabsContent value="burgers" className="mt-0">
-              <RestaurantGrid restaurants={filteredRestaurants} />
-            </TabsContent>
-          </Tabs>
-        </div>
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-sm text-muted-foreground">
+              {filteredRestaurants.length} restaurants found
+            </p>
+            <Button variant="outline" size="sm">
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+          </div>
+          
+          <TabsContent value="all" className="mt-0">
+            <RestaurantGrid restaurants={filteredRestaurants} />
+          </TabsContent>
+          
+          <TabsContent value="chicken" className="mt-0">
+            <RestaurantGrid restaurants={filteredRestaurants} />
+          </TabsContent>
+          
+          <TabsContent value="pizza" className="mt-0">
+            <RestaurantGrid restaurants={filteredRestaurants} />
+          </TabsContent>
+          
+          <TabsContent value="fast food" className="mt-0">
+            <RestaurantGrid restaurants={filteredRestaurants} />
+          </TabsContent>
+          
+          <TabsContent value="beverages" className="mt-0">
+            <RestaurantGrid restaurants={filteredRestaurants} />
+          </TabsContent>
+          
+          <TabsContent value="vegetarian" className="mt-0">
+            <RestaurantGrid restaurants={filteredRestaurants} />
+          </TabsContent>
+          
+          <TabsContent value="burgers" className="mt-0">
+            <RestaurantGrid restaurants={filteredRestaurants} />
+          </TabsContent>
+        </Tabs>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

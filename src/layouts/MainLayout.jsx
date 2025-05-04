@@ -1,26 +1,35 @@
+
 import React from "react";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import CartDrawer from "@/components/cart/CartDrawer";
-import { motion } from "framer-motion";
+import { Outlet } from "react-router-dom";
 
 const MainLayout = ({ children }) => {
   return (
     <div className="flex flex-col min-h-screen">
-      <Header />
-      <motion.main 
-        className="flex-1 pt-16"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {children}
-      </motion.main>
-      <Footer />
-      <CartDrawer />
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4">
+          <nav className="flex justify-between items-center">
+            <a href="/" className="font-bold text-2xl">FoodApp</a>
+            <div className="flex items-center gap-4">
+              <a href="/restaurants" className="hover:text-primary">Restaurants</a>
+              <a href="/login" className="hover:text-primary">Login</a>
+            </div>
+          </nav>
+        </div>
+      </header>
+      
+      <main className="flex-1">
+        {children || <Outlet />}
+      </main>
+      
+      <footer className="border-t">
+        <div className="container mx-auto px-4 py-6">
+          <p className="text-center text-muted-foreground">
+            &copy; {new Date().getFullYear()} FoodApp. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
 
-export default MainLayout; 
+export default MainLayout;
