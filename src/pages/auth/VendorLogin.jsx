@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -43,24 +44,23 @@ const VendorLogin = () => {
       console.log("Vendor login successful, redirecting to dashboard");
       toast({
         title: "Logged in!",
-        description: "Welcome to your dashboard.",
+        description: "Welcome to your dashboard."
       });
       const vendor = await Vendor.getVendorByFirebaseUid(user.uid);
       if (!vendor) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "User is not a vendor",
+          description: "User is not a vendor"
         });
-        description: "Welcome to your dashboard.",
-      });
+      }
       router.push('/vendor/dashboard');
     } catch (error) {
         console.error('Vendor login failed:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Login failed. Please check your credentials.",
+        description: error.message || "Login failed. Please check your credentials."
       });
     }
   };
