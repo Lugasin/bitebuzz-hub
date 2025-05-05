@@ -1,35 +1,28 @@
-import { db } from '../config/firebase';
-import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+
+// Menu service for fetching and managing restaurant menu items
 
 export interface MenuItem {
   id: string;
   name: string;
   description: string;
   price: number;
-  category: string;
-  subcategory: string;
   imageUrl: string;
+  category: string;
+  subcategory?: string;
+  preparationTime: number;
   rating: number;
   ratingCount: number;
-  preparationTime: number;
   isPopular: boolean;
-  isAvailable: boolean;
-  restaurantId: string;
-  restaurantName: string;
-  restaurantRating: number;
+  restaurantId?: string;
+  restaurantName?: string;
+  restaurantRating?: number;
   dietaryInfo: {
     isVegetarian: boolean;
     isVegan: boolean;
     isGlutenFree: boolean;
     isSpicy: boolean;
-  };
-  ingredients: string[];
-  nutritionalInfo: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
+    allergens?: string[];
+  }
 }
 
 export interface MenuCategory {
@@ -40,293 +33,176 @@ export interface MenuCategory {
   subcategories: string[];
 }
 
+// Zambian cuisine categories
 export const ZAMBIAN_CATEGORIES: MenuCategory[] = [
   {
-    id: 'main-dishes',
-    name: 'Main Dishes',
-    description: 'Traditional Zambian main courses',
-    imageUrl: '/images/categories/main-dishes.jpg',
-    subcategories: ['Nshima', 'Ifisashi', 'Kapenta', 'Chikanda', 'Biltong']
+    id: 'traditional',
+    name: 'Traditional Zambian',
+    description: 'Classic local dishes',
+    imageUrl: 'https://images.unsplash.com/photo-1515443961218-a51367888e4b',
+    subcategories: ['Nshima & Relish', 'Stews', 'Village Dishes']
   },
   {
-    id: 'side-dishes',
-    name: 'Side Dishes',
-    description: 'Perfect accompaniments to your main meal',
-    imageUrl: '/images/categories/side-dishes.jpg',
-    subcategories: ['Vegetables', 'Relishes', 'Sauces', 'Salads']
+    id: 'fusion',
+    name: 'Zambian Fusion',
+    description: 'Modern takes on traditional dishes',
+    imageUrl: 'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83',
+    subcategories: ['Gourmet', 'International', 'Street Food']
+  },
+  {
+    id: 'grilled',
+    name: 'Grilled & BBQ',
+    description: 'Flame-cooked meats & vegetables',
+    imageUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1',
+    subcategories: ['Meats', 'Fish', 'Vegetables']
   },
   {
     id: 'drinks',
-    name: 'Drinks',
-    description: 'Refreshing beverages',
-    imageUrl: '/images/categories/drinks.jpg',
-    subcategories: ['Soft Drinks', 'Juices', 'Traditional Drinks', 'Hot Beverages']
-  },
-  {
-    id: 'alcohol',
-    name: 'Alcohol',
-    description: 'Local and imported alcoholic beverages',
-    imageUrl: '/images/categories/alcohol.jpg',
-    subcategories: ['Beer', 'Wine', 'Spirits', 'Traditional Brews']
-  },
-  {
-    id: 'snacks',
-    name: 'Snacks',
-    description: 'Quick bites and street food',
-    imageUrl: '/images/categories/snacks.jpg',
-    subcategories: ['Street Food', 'Pastries', 'Fruits', 'Nuts']
-  },
-  {
-    id: 'desserts',
-    name: 'Desserts',
-    description: 'Sweet treats and traditional desserts',
-    imageUrl: '/images/categories/desserts.jpg',
-    subcategories: ['Cakes', 'Traditional Sweets', 'Ice Cream', 'Fruits']
+    name: 'Beverages',
+    description: 'Traditional and modern drinks',
+    imageUrl: 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d',
+    subcategories: ['Local Brews', 'Fruit Drinks', 'Tea & Coffee']
   }
 ];
 
-export interface MenuFilterOptions {
-  category?: string;
-  subcategory?: string;
-  minRating?: number;
-  maxPrice?: number;
-  dietaryRestrictions?: {
-    isVegetarian?: boolean;
-    isVegan?: boolean;
-    isGlutenFree?: boolean;
-    isSpicy?: boolean;
-  };
-  preparationTime?: number;
-  restaurantId?: string;
-  sortBy?: 'price' | 'rating' | 'preparationTime' | 'popularity';
-  sortOrder?: 'asc' | 'desc';
-}
-
-export const getPopularItems = async (limit: number = 10): Promise<MenuItem[]> => {
-  const itemsRef = collection(db, 'menuItems');
-  const q = query(
-    itemsRef,
-    where('isPopular', '==', true),
-    orderBy('rating', 'desc'),
-    limit(limit)
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-};
-
-export const getItemsByCategory = async (
-  category: string,
-  subcategory?: string
-): Promise<MenuItem[]> => {
-  const itemsRef = collection(db, 'menuItems');
-  let q = query(
-    itemsRef,
-    where('category', '==', category),
-    orderBy('rating', 'desc')
-  );
+// Mock API functions
+export const getPopularItems = async (): Promise<MenuItem[]> => {
+  // Simulate API call
+  await new Promise(resolve => setTimeout(resolve, 500));
   
-  if (subcategory) {
-    q = query(
-      itemsRef,
-      where('category', '==', category),
-      where('subcategory', '==', subcategory),
-      orderBy('rating', 'desc')
-    );
-  }
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-};
-
-export const getTopRatedRestaurants = async (limit: number = 5): Promise<MenuItem[]> => {
-  const itemsRef = collection(db, 'menuItems');
-  const q = query(
-    itemsRef,
-    orderBy('restaurantRating', 'desc'),
-    limit(limit)
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-};
-
-export const searchMenuItems = async (
-  searchTerm: string,
-  filters?: {
-    category?: string;
-    subcategory?: string;
-    minRating?: number;
-    maxPrice?: number;
-  }
-): Promise<MenuItem[]> => {
-  const itemsRef = collection(db, 'menuItems');
-  let q = query(itemsRef);
-  
-  if (filters?.category) {
-    q = query(q, where('category', '==', filters.category));
-  }
-  
-  if (filters?.subcategory) {
-    q = query(q, where('subcategory', '==', filters.subcategory));
-  }
-  
-  if (filters?.minRating) {
-    q = query(q, where('rating', '>=', filters.minRating));
-  }
-  
-  if (filters?.maxPrice) {
-    q = query(q, where('price', '<=', filters.maxPrice));
-  }
-  
-  const snapshot = await getDocs(q);
-  const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-  
-  return items.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.restaurantName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-};
-
-export const getFilteredItems = async (
-  filters: MenuFilterOptions,
-  limit: number = 20
-): Promise<MenuItem[]> => {
-  const itemsRef = collection(db, 'menuItems');
-  let q = query(itemsRef);
-
-  // Apply filters
-  if (filters.category) {
-    q = query(q, where('category', '==', filters.category));
-  }
-  
-  if (filters.subcategory) {
-    q = query(q, where('subcategory', '==', filters.subcategory));
-  }
-  
-  if (filters.minRating) {
-    q = query(q, where('rating', '>=', filters.minRating));
-  }
-  
-  if (filters.maxPrice) {
-    q = query(q, where('price', '<=', filters.maxPrice));
-  }
-
-  if (filters.dietaryRestrictions) {
-    const { isVegetarian, isVegan, isGlutenFree, isSpicy } = filters.dietaryRestrictions;
-    if (isVegetarian) {
-      q = query(q, where('dietaryInfo.isVegetarian', '==', true));
+  return [
+    {
+      id: '1',
+      name: 'Nshima with Village Chicken',
+      description: 'Traditional Zambian staple with free-range chicken',
+      price: 80.00,
+      imageUrl: 'https://images.unsplash.com/photo-1567982047351-76b6f93e38ee',
+      category: 'traditional',
+      subcategory: 'Nshima & Relish',
+      preparationTime: 25,
+      rating: 4.8,
+      ratingCount: 156,
+      isPopular: true,
+      restaurantId: '1',
+      restaurantName: 'Zambian Kitchen',
+      dietaryInfo: {
+        isVegetarian: false,
+        isVegan: false,
+        isGlutenFree: true,
+        isSpicy: false
+      }
+    },
+    {
+      id: '2',
+      name: 'Chikanda (African Polony)',
+      description: 'Vegetarian dish made from orchid tubers',
+      price: 45.00,
+      imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999',
+      category: 'traditional',
+      subcategory: 'Village Dishes',
+      preparationTime: 30,
+      rating: 4.3,
+      ratingCount: 82,
+      isPopular: true,
+      restaurantId: '2',
+      restaurantName: 'Lusaka Flavors',
+      dietaryInfo: {
+        isVegetarian: true,
+        isVegan: true,
+        isGlutenFree: true,
+        isSpicy: false
+      }
+    },
+    {
+      id: '3',
+      name: 'Ifisashi (Peanut Stew)',
+      description: 'Vegetables cooked in peanut sauce',
+      price: 55.00,
+      imageUrl: 'https://images.unsplash.com/photo-1551462147-ff29053bfc14',
+      category: 'traditional',
+      subcategory: 'Stews',
+      preparationTime: 20,
+      rating: 4.5,
+      ratingCount: 104,
+      isPopular: true,
+      restaurantId: '3',
+      restaurantName: 'Taste of Zambia',
+      dietaryInfo: {
+        isVegetarian: true,
+        isVegan: true,
+        isGlutenFree: true,
+        isSpicy: true
+      }
     }
-    if (isVegan) {
-      q = query(q, where('dietaryInfo.isVegan', '==', true));
-    }
-    if (isGlutenFree) {
-      q = query(q, where('dietaryInfo.isGlutenFree', '==', true));
-    }
-    if (isSpicy) {
-      q = query(q, where('dietaryInfo.isSpicy', '==', true));
-    }
-  }
-
-  if (filters.preparationTime) {
-    q = query(q, where('preparationTime', '<=', filters.preparationTime));
-  }
-
-  if (filters.restaurantId) {
-    q = query(q, where('restaurantId', '==', filters.restaurantId));
-  }
-
-  // Apply sorting
-  if (filters.sortBy) {
-    const order = filters.sortOrder === 'desc' ? 'desc' : 'asc';
-    q = query(q, orderBy(filters.sortBy, order));
-  }
-
-  // Apply limit
-  q = query(q, limit(limit));
-
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+  ];
 };
 
-export const getRestaurantMenu = async (
-  restaurantId: string,
-  filters?: Omit<MenuFilterOptions, 'restaurantId'>
-): Promise<MenuItem[]> => {
-  return getFilteredItems({ ...filters, restaurantId });
-};
-
-export const getRecommendedItems = async (
-  userId: string,
-  limit: number = 10
-): Promise<MenuItem[]> => {
-  // Get user's order history and preferences
-  const userRef = doc(db, 'users', userId);
-  const userDoc = await getDoc(userRef);
-  const userData = userDoc.data();
-
-  if (!userData) {
-    return getPopularItems(limit);
-  }
-
-  const { orderHistory, dietaryPreferences } = userData;
-
-  // Create filters based on user preferences
-  const filters: MenuFilterOptions = {
-    dietaryRestrictions: dietaryPreferences,
-    sortBy: 'rating',
-    sortOrder: 'desc'
-  };
-
-  // If user has order history, prioritize items from frequently ordered categories
-  if (orderHistory?.length > 0) {
-    const categoryCounts = orderHistory.reduce((acc: { [key: string]: number }, order) => {
-      order.items.forEach((item: MenuItem) => {
-        acc[item.category] = (acc[item.category] || 0) + 1;
-      });
-      return acc;
-    }, {});
-
-    const favoriteCategory = Object.entries(categoryCounts)
-      .sort(([, a], [, b]) => b - a)[0]?.[0];
-
-    if (favoriteCategory) {
-      filters.category = favoriteCategory;
+export const getItemsByCategory = async (category: string, subcategory?: string): Promise<MenuItem[]> => {
+  // Simulate API call
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Mock items - in a real app, these would come from a database
+  const allItems: MenuItem[] = [
+    // Traditional category
+    {
+      id: '101',
+      name: 'Nshima with Kapenta',
+      description: 'Traditional cornmeal porridge with dried fish',
+      price: 65.00,
+      imageUrl: 'https://images.unsplash.com/photo-1567982047351-76b6f93e38ee',
+      category: 'traditional',
+      subcategory: 'Nshima & Relish',
+      preparationTime: 15,
+      rating: 4.2,
+      ratingCount: 78,
+      isPopular: false,
+      restaurantId: '1',
+      dietaryInfo: {
+        isVegetarian: false,
+        isVegan: false,
+        isGlutenFree: true,
+        isSpicy: false
+      }
+    },
+    // Additional mock items would be added here
+  ];
+  
+  // Filter by category and subcategory if provided
+  return allItems.filter(item => {
+    if (subcategory) {
+      return item.category === category && item.subcategory === subcategory;
     }
-  }
-
-  return getFilteredItems(filters, limit);
-};
-
-export const getTrendingItems = async (limit: number = 10): Promise<MenuItem[]> => {
-  const itemsRef = collection(db, 'menuItems');
-  const q = query(
-    itemsRef,
-    where('isAvailable', '==', true),
-    orderBy('ratingCount', 'desc'),
-    limit(limit)
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-};
-
-export const getItemsByPriceRange = async (
-  minPrice: number,
-  maxPrice: number,
-  filters?: Omit<MenuFilterOptions, 'minPrice' | 'maxPrice'>
-): Promise<MenuItem[]> => {
-  return getFilteredItems({
-    ...filters,
-    minPrice,
-    maxPrice
+    return item.category === category;
   });
 };
 
-export const getItemsByPreparationTime = async (
-  maxTime: number,
-  filters?: Omit<MenuFilterOptions, 'preparationTime'>
-): Promise<MenuItem[]> => {
-  return getFilteredItems({
-    ...filters,
-    preparationTime: maxTime
-  });
-}; 
+export const getTopRatedRestaurants = async (): Promise<MenuItem[]> => {
+  // Simulate API call
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Return mock restaurants represented as menu items
+  return [
+    {
+      id: 'rest-1',
+      name: 'Zambian Delight',
+      description: 'Authentic Zambian cuisine with modern touches',
+      price: 0, // Not applicable for restaurant listing
+      imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4',
+      category: 'restaurant',
+      preparationTime: 25, // Average prep time
+      rating: 4.8,
+      ratingCount: 247,
+      isPopular: true,
+      restaurantId: '1',
+      restaurantName: 'Zambian Delight',
+      restaurantRating: 4.8,
+      dietaryInfo: {
+        isVegetarian: false,
+        isVegan: false,
+        isGlutenFree: false,
+        isSpicy: false
+      }
+    },
+    // Additional restaurants would be added here
+  ];
+};

@@ -1,12 +1,12 @@
-import { db } from './firebase';
-import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
 
-interface PaymentDetails {
+// Payment service for handling transactions
+
+interface PaymentRequest {
+  orderId: string;
   amount: number;
   currency: string;
   paymentMethod: string;
-  orderId: string;
-  customerId: string;
+  customerId?: string;
 }
 
 interface PaymentResult {
@@ -16,85 +16,48 @@ interface PaymentResult {
 }
 
 class PaymentService {
-  // Process payment for an order
-  async processPayment(paymentDetails: PaymentDetails): Promise<PaymentResult> {
+  async processPayment(paymentRequest: PaymentRequest): Promise<PaymentResult> {
     try {
-      // In a real implementation, this would call your payment gateway (e.g., Stripe)
-      // For now, we'll simulate a successful payment
-      const transactionId = `tx_${Date.now()}`;
+      console.log('Processing payment:', paymentRequest);
       
-      // Update order with payment details
-      await updateDoc(doc(db, 'orders', paymentDetails.orderId), {
-        paymentStatus: 'completed',
-        paymentDetails: {
-          transactionId,
-          amount: paymentDetails.amount,
-          currency: paymentDetails.currency,
-          method: paymentDetails.paymentMethod,
-          timestamp: new Date()
-        }
-      });
-
-      // Create payment record
-      await addDoc(collection(db, 'payments'), {
-        ...paymentDetails,
-        transactionId,
-        status: 'completed',
-        createdAt: new Date()
-      });
-
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Simulate successful payment (in a real app, this would call a payment gateway)
       return {
         success: true,
-        transactionId
+        transactionId: `txn-${Date.now()}`
       };
     } catch (error) {
       console.error('Payment processing error:', error);
       return {
         success: false,
-        error: 'Payment processing failed'
+        error: error instanceof Error ? error.message : 'Payment processing failed'
       };
     }
   }
-
-  // Get payment status for an order
-  async getPaymentStatus(orderId: string) {
+  
+  async getPaymentMethods(customerId: string): Promise<string[]> {
     try {
-      const orderRef = doc(db, 'orders', orderId);
-      const orderDoc = await orderRef.get();
-      return orderDoc.data()?.paymentStatus || 'pending';
-    } catch (error) {
-      console.error('Error getting payment status:', error);
-      throw error;
-    }
-  }
-
-  // Refund a payment
-  async refundPayment(orderId: string, amount: number): Promise<PaymentResult> {
-    try {
-      // In a real implementation, this would call your payment gateway's refund API
-      const refundId = `rf_${Date.now()}`;
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      await updateDoc(doc(db, 'orders', orderId), {
-        paymentStatus: 'refunded',
-        refundDetails: {
-          refundId,
-          amount,
-          timestamp: new Date()
-        }
-      });
-
-      return {
-        success: true,
-        transactionId: refundId
-      };
+      // Return mock payment methods
+      return ['card', 'wallet', 'bank'];
     } catch (error) {
-      console.error('Refund processing error:', error);
-      return {
-        success: false,
-        error: 'Refund processing failed'
-      };
+      console.error('Error fetching payment methods:', error);
+      return [];
     }
+  }
+  
+  async validateCardDetails(cardNumber: string, expiryDate: string, cvv: string): Promise<boolean> {
+    // Basic validation - in a real app, this would be more sophisticated
+    const isCardNumberValid = /^\d{16}$/.test(cardNumber);
+    const isExpiryDateValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate);
+    const isCvvValid = /^\d{3}$/.test(cvv);
+    
+    return isCardNumberValid && isExpiryDateValid && isCvvValid;
   }
 }
 
-export const paymentService = new PaymentService(); 
+export const paymentService = new PaymentService();
