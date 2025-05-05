@@ -1,9 +1,8 @@
-import { db } from '../config/firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, Timestamp, orderBy } from 'firebase/firestore';
-import { UserRole } from '../types/user';
+
+// Support Service for handling support tickets and customer service
 
 export interface SupportTicket {
-  id?: string;
+  id: string;
   userId: string;
   userEmail: string;
   userName: string;
@@ -12,118 +11,155 @@ export interface SupportTicket {
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   category: 'ORDER' | 'PAYMENT' | 'DELIVERY' | 'ACCOUNT' | 'OTHER';
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   assignedTo?: string;
-  assignedToName?: string;
-  resolution?: string;
-  attachments?: string[];
+  assignedName?: string;
   orderId?: string;
   restaurantId?: string;
+  resolution?: string;
+  attachments?: string[];
 }
 
 export interface SupportMessage {
-  id?: string;
+  id: string;
   ticketId: string;
   userId: string;
   userName: string;
-  userRole: UserRole;
+  userRole: string;
   message: string;
-  createdAt: Date;
+  createdAt: string;
   attachments?: string[];
 }
 
-export const createSupportTicket = async (ticket: Omit<SupportTicket, 'id' | 'createdAt' | 'updatedAt'>): Promise<SupportTicket> => {
-  const ticketsRef = collection(db, 'supportTickets');
-  const now = new Date();
+// In-memory storage for demo purposes
+const tickets: SupportTicket[] = [];
+const messages: SupportMessage[] = [];
+
+export interface CreateTicketData {
+  userId: string;
+  userEmail: string;
+  userName: string;
+  subject: string;
+  description: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  category: 'ORDER' | 'PAYMENT' | 'DELIVERY' | 'ACCOUNT' | 'OTHER';
+  orderId?: string;
+  restaurantId?: string;
+  attachments?: string[];
+}
+
+export async function createSupportTicket(data: CreateTicketData): Promise<SupportTicket> {
+  const now = new Date().toISOString();
   
-  const newTicket = {
-    ...ticket,
+  const ticket: SupportTicket = {
+    id: `ticket-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    userId: data.userId,
+    userEmail: data.userEmail,
+    userName: data.userName,
+    subject: data.subject,
+    description: data.description,
+    status: 'OPEN',
+    priority: data.priority,
+    category: data.category,
     createdAt: now,
     updatedAt: now,
-    status: 'OPEN' as const
+    orderId: data.orderId,
+    restaurantId: data.restaurantId,
+    attachments: data.attachments,
   };
-
-  const docRef = await addDoc(ticketsRef, newTicket);
-  return { ...newTicket, id: docRef.id };
-};
-
-export const updateSupportTicket = async (ticketId: string, updates: Partial<SupportTicket>): Promise<void> => {
-  const ticketRef = doc(db, 'supportTickets', ticketId);
-  await updateDoc(ticketRef, {
-    ...updates,
-    updatedAt: new Date()
-  });
-};
-
-export const addSupportMessage = async (message: Omit<SupportMessage, 'id' | 'createdAt'>): Promise<SupportMessage> => {
-  const messagesRef = collection(db, 'supportMessages');
-  const now = new Date();
   
-  const newMessage = {
-    ...message,
-    createdAt: now
+  tickets.push(ticket);
+  return ticket;
+}
+
+export async function updateSupportTicket(
+  ticketId: string,
+  updates: Partial<SupportTicket>
+): Promise<SupportTicket | null> {
+  const ticketIndex = tickets.findIndex(t => t.id === ticketId);
+  
+  if (ticketIndex === -1) {
+    return null;
+  }
+  
+  const ticket = tickets[ticketIndex];
+  const updatedTicket = {
+    ...ticket,
+    ...updates,
+    updatedAt: new Date().toISOString(),
   };
+  
+  tickets[ticketIndex] = updatedTicket;
+  return updatedTicket;
+}
 
-  const docRef = await addDoc(messagesRef, newMessage);
-  return { ...newMessage, id: docRef.id };
-};
+export interface CreateMessageData {
+  ticketId: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  message: string;
+  attachments?: string[];
+}
 
-export const getSupportTickets = async (filters: {
-  userId?: string;
-  status?: SupportTicket['status'];
-  priority?: SupportTicket['priority'];
-  category?: SupportTicket['category'];
-  assignedTo?: string;
-  restaurantId?: string;
-}): Promise<SupportTicket[]> => {
-  let ticketsQuery = query(collection(db, 'supportTickets'), orderBy('createdAt', 'desc'));
-
-  if (filters.userId) {
-    ticketsQuery = query(ticketsQuery, where('userId', '==', filters.userId));
+export async function addSupportMessage(data: CreateMessageData): Promise<SupportMessage> {
+  const message: SupportMessage = {
+    id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    ticketId: data.ticketId,
+    userId: data.userId,
+    userName: data.userName,
+    userRole: data.userRole,
+    message: data.message,
+    createdAt: new Date().toISOString(),
+    attachments: data.attachments,
+  };
+  
+  messages.push(message);
+  
+  // Update the ticket's updatedAt timestamp
+  const ticketIndex = tickets.findIndex(t => t.id === data.ticketId);
+  if (ticketIndex !== -1) {
+    tickets[ticketIndex].updatedAt = message.createdAt;
   }
-  if (filters.status) {
-    ticketsQuery = query(ticketsQuery, where('status', '==', filters.status));
-  }
-  if (filters.priority) {
-    ticketsQuery = query(ticketsQuery, where('priority', '==', filters.priority));
-  }
-  if (filters.category) {
-    ticketsQuery = query(ticketsQuery, where('category', '==', filters.category));
-  }
-  if (filters.assignedTo) {
-    ticketsQuery = query(ticketsQuery, where('assignedTo', '==', filters.assignedTo));
-  }
-  if (filters.restaurantId) {
-    ticketsQuery = query(ticketsQuery, where('restaurantId', '==', filters.restaurantId));
-  }
+  
+  return message;
+}
 
-  const snapshot = await getDocs(ticketsQuery);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportTicket));
-};
+export async function getSupportTickets(filters: Partial<SupportTicket> = {}): Promise<SupportTicket[]> {
+  // Filter tickets based on provided filters
+  return tickets.filter(ticket => {
+    for (const [key, value] of Object.entries(filters)) {
+      if (ticket[key as keyof SupportTicket] !== value) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
 
-export const getSupportMessages = async (ticketId: string): Promise<SupportMessage[]> => {
-  const messagesQuery = query(
-    collection(db, 'supportMessages'),
-    where('ticketId', '==', ticketId),
-    orderBy('createdAt', 'asc')
-  );
+export async function getSupportMessages(ticketId: string): Promise<SupportMessage[]> {
+  return messages.filter(msg => msg.ticketId === ticketId);
+}
 
-  const snapshot = await getDocs(messagesQuery);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportMessage));
-};
-
-export const assignSupportTicket = async (ticketId: string, agentId: string, agentName: string): Promise<void> => {
-  await updateSupportTicket(ticketId, {
+export async function assignSupportTicket(
+  ticketId: string,
+  agentId: string,
+  agentName: string
+): Promise<SupportTicket | null> {
+  return updateSupportTicket(ticketId, {
     assignedTo: agentId,
-    assignedToName: agentName,
-    status: 'IN_PROGRESS'
+    assignedName: agentName,
+    status: 'IN_PROGRESS',
   });
-};
+}
 
-export const resolveSupportTicket = async (ticketId: string, resolution: string): Promise<void> => {
-  await updateSupportTicket(ticketId, {
+export async function resolveSupportTicket(
+  ticketId: string,
+  resolution: string
+): Promise<SupportTicket | null> {
+  return updateSupportTicket(ticketId, {
     status: 'RESOLVED',
-    resolution
+    resolution,
   });
-}; 
+}
