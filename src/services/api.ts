@@ -1,100 +1,111 @@
 
 import axios from 'axios';
 
-// Create axios instance with default config
+const API_URL = process.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Create an axios instance with default config
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add request interceptor to add auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Add token to requests if available
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Add response interceptor for error handling
+// Handle response errors
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle common errors
-    if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          // Unauthorized - redirect to login
-          // In a real app, this would use a router
-          console.error('Authentication required');
-          break;
-        case 403:
-          // Forbidden
-          console.error('You do not have permission to access this resource');
-          break;
-        case 500:
-          console.error('Server error occurred');
-          break;
-        default:
-          console.error(`Error: ${error.response.data.message || 'Unknown error'}`);
-      }
-    } else if (error.request) {
-      console.error('No response received from server');
-    } else {
-      console.error('Error setting up request:', error.message);
+    const { response } = error;
+    
+    // Handle authentication errors
+    if (response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
+    
     return Promise.reject(error);
   }
 );
 
-// API categories
+// API services
 export const api = {
-  // Authentication endpoints
+  // Auth endpoints
   auth: {
-    login: (email: string, password: string) => apiClient.post('/auth/login', { email, password }),
-    register: (userData: any) => apiClient.post('/auth/register', userData),
-    forgotPassword: (email: string) => apiClient.post('/auth/forgot-password', { email }),
-    resetPassword: (token: string, password: string) =>
+    login: (email: string, password: string) => 
+      apiClient.post('/auth/login', { email, password }),
+    
+    register: (userData: any) => 
+      apiClient.post('/auth/register', userData),
+    
+    forgotPassword: (email: string) => 
+      apiClient.post('/auth/forgot-password', { email }),
+    
+    resetPassword: (token: string, password: string) => 
       apiClient.post('/auth/reset-password', { token, password }),
-    validateToken: (token: string) => apiClient.post('/auth/validate-token', { token }),
+    
+    validateToken: (token: string) => 
+      apiClient.post('/auth/validate-token', { token })
   },
   
   // User endpoints
-  user: {
-    getProfile: () => apiClient.get('/user/profile'),
-    updateProfile: (data: any) => apiClient.put('/user/profile', data),
-    getAddresses: () => apiClient.get('/user/addresses'),
-    addAddress: (address: any) => apiClient.post('/user/addresses', address),
+  users: {
+    getProfile: () => apiClient.get('/users/profile'),
+    updateProfile: (data: any) => apiClient.put('/users/profile', data),
+    getById: (id: string) => apiClient.get(`/users/${id}`),
+    getAll: (params?: any) => apiClient.get('/users', { params }),
+    changeRole: (userId: string, role: string) => 
+      apiClient.put(`/users/${userId}/role`, { role })
   },
   
   // Restaurant endpoints
   restaurants: {
     getAll: (params?: any) => apiClient.get('/restaurants', { params }),
-    getById: (id: number) => apiClient.get(`/restaurants/${id}`),
-    getMenu: (id: number) => apiClient.get(`/restaurants/${id}/menu`),
+    getById: (id: string) => apiClient.get(`/restaurants/${id}`),
+    create: (data: any) => apiClient.post('/restaurants', data),
+    update: (id: string, data: any) => apiClient.put(`/restaurants/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/restaurants/${id}`),
+    getMenu: (id: string) => apiClient.get(`/restaurants/${id}/menu`),
+    updateMenu: (id: string, data: any) => 
+      apiClient.put(`/restaurants/${id}/menu`, data)
   },
   
   // Order endpoints
   orders: {
-    create: (orderData: any) => apiClient.post('/orders', orderData),
-    getById: (id: number) => apiClient.get(`/orders/${id}`),
-    getUserOrders: () => apiClient.get('/orders/user'),
-    updateStatus: (id: number, status: string) =>
-      apiClient.put(`/orders/${id}/status`, { status }),
+    create: (data: any) => apiClient.post('/orders', data),
+    getById: (id: string) => apiClient.get(`/orders/${id}`),
+    getAll: (params?: any) => apiClient.get('/orders', { params }),
+    update: (id: string, data: any) => apiClient.put(`/orders/${id}`, data),
+    cancel: (id: string) => apiClient.put(`/orders/${id}/cancel`),
+    trackDelivery: (id: string) => apiClient.get(`/orders/${id}/track`)
   },
   
   // Analytics endpoints
   analytics: {
-    get: (params?: any) => apiClient.get('/analytics', { params }),
-    getOrdersByDate: (startDate: string, endDate: string) =>
-      apiClient.get('/analytics/orders-by-date', { params: { startDate, endDate } }),
-    getTopProducts: () => apiClient.get('/analytics/top-products'),
-    getRevenue: (period: string) =>
-      apiClient.get('/analytics/revenue', { params: { period } }),
+    getDashboard: (params?: any) => apiClient.get('/analytics/dashboard', { params }),
+    getSales: (params?: any) => apiClient.get('/analytics/sales', { params }),
+    getCustomers: (params?: any) => apiClient.get('/analytics/customers', { params }),
+    getPopularItems: (params?: any) => apiClient.get('/analytics/popular-items', { params })
   },
+  
+  // Support endpoints
+  support: {
+    createTicket: (data: any) => apiClient.post('/support/tickets', data),
+    getTickets: (params?: any) => apiClient.get('/support/tickets', { params }),
+    getTicketById: (id: string) => apiClient.get(`/support/tickets/${id}`),
+    updateTicket: (id: string, data: any) => 
+      apiClient.put(`/support/tickets/${id}`, data),
+    addComment: (ticketId: string, data: any) => 
+      apiClient.post(`/support/tickets/${ticketId}/comments`, data)
+  }
 };
+
+export default api;
