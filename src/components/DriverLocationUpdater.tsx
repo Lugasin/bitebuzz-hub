@@ -41,7 +41,7 @@ const DriverLocationUpdater: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           latitude,
@@ -173,7 +173,6 @@ const DriverLocationUpdater: React.FC = () => {
         <div className="flex">
           {isTracking ? (
             <Button
-              variant="destructive"
               onClick={stopTracking}
               className="w-full"
             >
@@ -181,7 +180,6 @@ const DriverLocationUpdater: React.FC = () => {
             </Button>
           ) : (
             <Button
-              variant="default"
               onClick={startTracking}
               className="w-full"
             >

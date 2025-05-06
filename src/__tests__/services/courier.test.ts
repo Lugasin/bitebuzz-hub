@@ -99,4 +99,4 @@ describe('CourierService', () => {
       expect(result.timestamp).toBeInstanceOf(Date);
     });
   });
-}); 
+});

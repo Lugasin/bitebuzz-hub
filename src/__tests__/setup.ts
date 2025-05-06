@@ -1,13 +1,13 @@
 
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import * as MongoDBMemoryServer from 'mongodb-memory-server';
 import { dbPool } from '../db';
 
-let mongoServer: MongoMemoryServer;
+let mongoServer: any;
 
 // Set up the database before all tests
 beforeAll(async () => {
   // Start an in-memory MongoDB server
-  mongoServer = await MongoMemoryServer.create();
+  mongoServer = await MongoDBMemoryServer.MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   
   // Connect to the in-memory database

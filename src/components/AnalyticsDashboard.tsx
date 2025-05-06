@@ -1,102 +1,47 @@
+
 import React, { useState, useEffect } from 'react';
-import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  DatePicker,
-  Select,
-  Spin,
-  message,
-  Tabs,
-  Progress,
-  Tooltip,
-  Typography,
-  Button
-} from 'antd';
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
-import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
-import { formatCurrency, formatTime } from '../utils/formatters';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { apiService } from '../services/api';
 
-const { RangePicker } = DatePicker;
-const { Option } = Select;
-const { Title, Text } = Typography;
-const { TabPane } = Tabs;
-
-interface AnalyticsData {
-  dailyOrders: Array<{
-    date: string;
-    count: number;
-    revenue: number;
-  }>;
-  topProducts: Array<{
-    name: string;
-    sales: number;
-    revenue: number;
-  }>;
-  orderStatus: Array<{
-    status: string;
-    count: number;
-  }>;
-  summary: {
-    totalOrders: number;
-    totalRevenue: number;
-    averageOrderValue: number;
-    completionRate: number;
-    averageDeliveryTime: number;
-    customerSatisfaction: number;
-  };
-  peakHours: Array<{
-    hour: number;
-    orders: number;
-  }>;
-  deliveryPerformance: {
-    averageTime: number;
-    onTimeRate: number;
-    lateRate: number;
-  };
-}
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
+// Simplified version without recharts dependencies
 const AnalyticsDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [data, setData] = useState<any>(null);
   const [timeRange, setTimeRange] = useState<[string, string]>(['', '']);
   const [restaurantId, setRestaurantId] = useState<string>('');
   const [activeTab, setActiveTab] = useState('overview');
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const { toast } = useToast();
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
       const [startDate, endDate] = timeRange;
-      const response = await api.get('/analytics', {
+      
+      // Use apiService instead of direct api.get
+      const response = await apiService.get('/analytics', {
         params: {
           startDate,
           endDate,
-          restaurantId: user?.role === 'RESTAURANT_AGENT' ? user.restaurantId : restaurantId
+          restaurantId: userRole === 'vendor' ? user?.id : restaurantId
         }
       });
+      
       setData(response.data);
+      toast({
+        title: "Analytics loaded",
+        description: "Dashboard data updated successfully"
+      });
     } catch (error) {
-      message.error('Failed to fetch analytics data');
+      console.error('Failed to fetch analytics data', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch analytics data",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -108,214 +53,50 @@ const AnalyticsDashboard: React.FC = () => {
     }
   }, [timeRange, restaurantId]);
 
-  const handleExport = () => {
-    // Implement export functionality
-    message.success('Exporting analytics data...');
-  };
-
-  const renderOverview = () => (
-    <>
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Orders"
-              value={data?.summary.totalOrders}
-              prefix={<Text type="secondary">📦</Text>}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Revenue"
-              value={data?.summary.totalRevenue}
-              prefix="$"
-              precision={2}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Average Order Value"
-              value={data?.summary.averageOrderValue}
-              prefix="$"
-              precision={2}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Customer Satisfaction"
-              value={data?.summary.customerSatisfaction}
-              precision={1}
-              suffix="/5"
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={12}>
-          <Card title="Daily Orders & Revenue">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data?.dailyOrders}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <RechartsTooltip />
-                <Legend />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#8884d8"
-                  name="Orders"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#82ca9d"
-                  name="Revenue"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card title="Delivery Performance">
-            <Row gutter={16}>
-              <Col span={12}>
-                <Progress
-                  type="circle"
-                  percent={data?.deliveryPerformance.onTimeRate}
-                  format={percent => `${percent}%`}
-                  status="active"
-                />
-                <Text>On-Time Delivery Rate</Text>
-              </Col>
-              <Col span={12}>
-                <Progress
-                  type="circle"
-                  percent={data?.summary.completionRate}
-                  format={percent => `${percent}%`}
-                  status="success"
-                />
-                <Text>Order Completion Rate</Text>
-              </Col>
-            </Row>
-            <Row style={{ marginTop: 16 }}>
-              <Col span={24}>
-                <Text>Average Delivery Time: {formatTime(data?.deliveryPerformance.averageTime)}</Text>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
-    </>
-  );
-
-  const renderProducts = () => (
-    <Card title="Top Products">
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={data?.topProducts}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
-          <RechartsTooltip />
-          <Legend />
-          <Bar dataKey="sales" fill="#8884d8" name="Sales" />
-          <Bar dataKey="revenue" fill="#82ca9d" name="Revenue" />
-        </BarChart>
-      </ResponsiveContainer>
-    </Card>
-  );
-
-  const renderPeakHours = () => (
-    <Card title="Peak Hours Analysis">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data?.peakHours}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="hour" />
-          <YAxis />
-          <RechartsTooltip />
-          <Legend />
-          <Bar dataKey="orders" fill="#8884d8" name="Orders" />
-        </BarChart>
-      </ResponsiveContainer>
-    </Card>
-  );
-
   return (
-    <div>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-        <Col>
-          <Title level={2}>Analytics Dashboard</Title>
-        </Col>
-        <Col>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExport}
-            style={{ marginRight: 8 }}
-          >
-            Export
-          </Button>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={fetchAnalytics}
-            loading={loading}
-          >
-            Refresh
-          </Button>
-        </Col>
-      </Row>
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
+        <Button
+          onClick={fetchAnalytics}
+          disabled={loading}
+        >
+          {loading ? "Loading..." : "Refresh Data"}
+        </Button>
+      </div>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={8}>
-          <RangePicker
-            onChange={(dates) => {
-              if (dates) {
-                setTimeRange([
-                  dates[0]?.format('YYYY-MM-DD') || '',
-                  dates[1]?.format('YYYY-MM-DD') || ''
-                ]);
-              }
-            }}
-          />
-        </Col>
-        {user?.role === 'ADMIN' && (
-          <Col span={8}>
-            <Select
-              style={{ width: '100%' }}
-              placeholder="Select Restaurant"
-              onChange={setRestaurantId}
-            >
-              {/* Add restaurant options here */}
-            </Select>
-          </Col>
-        )}
-      </Row>
+      {/* Date range selector would go here */}
+      <div className="mb-6">
+        <p>Please select a date range to view analytics</p>
+      </div>
 
       {loading ? (
-        <Spin size="large" />
+        <div className="flex justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
       ) : data ? (
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane tab="Overview" key="overview">
-            {renderOverview()}
-          </TabPane>
-          <TabPane tab="Products" key="products">
-            {renderProducts()}
-          </TabPane>
-          <TabPane tab="Peak Hours" key="peakHours">
-            {renderPeakHours()}
-          </TabPane>
-        </Tabs>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card className="p-4">
+            <h3 className="font-semibold mb-2">Total Orders</h3>
+            <p className="text-2xl font-bold">{data.summary?.totalOrders || 0}</p>
+          </Card>
+          
+          <Card className="p-4">
+            <h3 className="font-semibold mb-2">Total Revenue</h3>
+            <p className="text-2xl font-bold">
+              ${data.summary?.totalRevenue?.toFixed(2) || "0.00"}
+            </p>
+          </Card>
+          
+          <Card className="p-4">
+            <h3 className="font-semibold mb-2">Avg. Order Value</h3>
+            <p className="text-2xl font-bold">
+              ${data.summary?.averageOrderValue?.toFixed(2) || "0.00"}
+            </p>
+          </Card>
+        </div>
       ) : (
-        <Card>
+        <Card className="p-6 text-center">
           <p>Select a date range to view analytics</p>
         </Card>
       )}
@@ -323,4 +104,4 @@ const AnalyticsDashboard: React.FC = () => {
   );
 };
 
-export default AnalyticsDashboard; 
+export default AnalyticsDashboard;

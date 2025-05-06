@@ -152,21 +152,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ featuredItems, topRestaurants
                   <p className="text-sm text-gray-500 line-clamp-2">{item.description}</p>
                   <p className="font-bold mt-2">K{item.price.toFixed(2)}</p>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    <Badge variant="outline" className="flex items-center gap-1">
+                    <Badge className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {item.preparationTime} min
                     </Badge>
                     {item.dietaryInfo.isVegetarian && (
-                      <Badge variant="success">Vegetarian</Badge>
+                      <Badge>Vegetarian</Badge>
                     )}
                     {item.dietaryInfo.isVegan && (
-                      <Badge variant="success">Vegan</Badge>
+                      <Badge>Vegan</Badge>
                     )}
                     {item.dietaryInfo.isGlutenFree && (
-                      <Badge variant="info">Gluten Free</Badge>
+                      <Badge>Gluten Free</Badge>
                     )}
                     {item.dietaryInfo.isSpicy && (
-                      <Badge variant="warning">Spicy</Badge>
+                      <Badge>Spicy</Badge>
                     )}
                   </div>
                 </div>
@@ -216,7 +216,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ featuredItems, topRestaurants
         <Card className="max-w-2xl mx-auto p-12">
           <h2 className="text-3xl font-bold">Ready to Order?</h2>
           <p className="my-4">Discover the best of Zambian cuisine at your fingertips</p>
-          <Button size="lg" onClick={() => navigate('/menu')}>
+          <Button onClick={() => navigate('/menu')}>
             Browse Menu
           </Button>
         </Card>

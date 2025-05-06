@@ -6,15 +6,52 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Plus, Minus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import type { DietPreference, MealPlan as MealPlanType } from '../services/mealPlanningService';
+import { apiService } from '../services/api';
+
+// Define types properly
+interface Ingredient {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+interface Meal {
+  id: string;
+  name: string;
+  imageUrl: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  ingredients: Ingredient[];
+}
+
+interface DietPreference {
+  type: string;
+  restrictions: string[];
+  allergies: string[];
+  preferredCuisines: string[];
+  calorieTarget: number;
+  proteinTarget: number;
+  carbTarget: number;
+  fatTarget: number;
+}
+
+interface MealPlanData {
+  id: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  meals: Meal[];
+}
 
 interface MealPlanProps {
   initialDietPreference?: DietPreference;
-  onMealPlanGenerated?: (mealPlan: MealPlanType) => void;
+  onMealPlanGenerated?: (mealPlan: MealPlanData) => void;
 }
 
 const MealPlan: React.FC<MealPlanProps> = ({ initialDietPreference, onMealPlanGenerated }) => {
-  const [mealPlan, setMealPlan] = useState<MealPlanType | null>(null);
+  const [mealPlan, setMealPlan] = useState<MealPlanData | null>(null);
   const [loading, setLoading] = useState(false);
   const [dietPreference, setDietPreference] = useState<DietPreference>(
     initialDietPreference || {
@@ -47,7 +84,7 @@ const MealPlan: React.FC<MealPlanProps> = ({ initialDietPreference, onMealPlanGe
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           dietPreference,
@@ -96,7 +133,7 @@ const MealPlan: React.FC<MealPlanProps> = ({ initialDietPreference, onMealPlanGe
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           mealId,
@@ -166,7 +203,7 @@ const MealPlan: React.FC<MealPlanProps> = ({ initialDietPreference, onMealPlanGe
         </div>
       ) : mealPlan ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {mealPlan.meals.map((meal, index) => (
+          {mealPlan.meals.map((meal: Meal, index: number) => (
             <Card key={index} className="overflow-hidden">
               <div className="h-48 overflow-hidden">
                 <img 
@@ -192,7 +229,7 @@ const MealPlan: React.FC<MealPlanProps> = ({ initialDietPreference, onMealPlanGe
                   <div className="mt-4">
                     <h4 className="font-medium mb-1">Ingredients:</h4>
                     <ul className="text-sm">
-                      {meal.ingredients.map((ingredient, i) => (
+                      {meal.ingredients.map((ingredient: Ingredient, i: number) => (
                         <li key={i} className="flex justify-between">
                           <span>{ingredient.name}:</span>
                           <span>{ingredient.quantity} {ingredient.unit}</span>

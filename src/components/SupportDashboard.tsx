@@ -24,7 +24,9 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '../services/api';
-import { UserRole } from '../types/user';
+
+// Define UserRole type
+type UserRole = 'customer' | 'vendor' | 'delivery' | 'admin' | 'support' | 'superadmin' | 'guest';
 
 interface SupportTicket {
   id: string;
@@ -69,6 +71,8 @@ const SupportDashboard: React.FC = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
+      
+      // Use apiService instead of api.get
       const response = await apiService.get('/support/tickets');
       setTickets(response.data);
     } catch (error) {
@@ -85,6 +89,7 @@ const SupportDashboard: React.FC = () => {
 
   const fetchMessages = async (ticketId: string) => {
     try {
+      // Use apiService instead of api.get
       const response = await apiService.get(`/support/tickets/${ticketId}`);
       setMessages(response.data.messages);
     } catch (error) {
@@ -109,6 +114,7 @@ const SupportDashboard: React.FC = () => {
 
   const handleNewTicket = async () => {
     try {
+      // Use apiService instead of api.post
       await apiService.post('/support/tickets', newTicket);
       
       toast({
@@ -139,6 +145,7 @@ const SupportDashboard: React.FC = () => {
     if (!selectedTicket || !newMessage.trim()) return;
 
     try {
+      // Use apiService instead of api.post
       await apiService.post(`/support/tickets/${selectedTicket.id}/messages`, {
         message: newMessage
       });
@@ -164,6 +171,7 @@ const SupportDashboard: React.FC = () => {
     if (!selectedTicket || !user) return;
 
     try {
+      // Use apiService instead of api.post
       await apiService.post(`/support/tickets/${selectedTicket.id}/assign`, {
         agentId: user.id,
       });
@@ -188,6 +196,7 @@ const SupportDashboard: React.FC = () => {
     if (!selectedTicket) return;
 
     try {
+      // Use apiService instead of api.post
       await apiService.post(`/support/tickets/${selectedTicket.id}/resolve`, {
         resolution: 'Resolved by support agent'
       });
@@ -359,7 +368,7 @@ const SupportDashboard: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold">{msg.userName}</span>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge className="text-xs">
                               {msg.userRole}
                             </Badge>
                             <span className="text-xs text-gray-500">
@@ -440,7 +449,7 @@ const SupportDashboard: React.FC = () => {
                 <label htmlFor="priority" className="text-sm font-medium">Priority</label>
                 <Select
                   value={newTicket.priority}
-                  onValueChange={(value) => setNewTicket({...newTicket, priority: value as any})}
+                  onValueChange={(value: string) => setNewTicket({...newTicket, priority: value as any})}
                 >
                   <SelectTrigger id="priority">
                     <SelectValue placeholder="Select priority" />
@@ -458,7 +467,7 @@ const SupportDashboard: React.FC = () => {
                 <label htmlFor="category" className="text-sm font-medium">Category</label>
                 <Select
                   value={newTicket.category}
-                  onValueChange={(value) => setNewTicket({...newTicket, category: value as any})}
+                  onValueChange={(value: string) => setNewTicket({...newTicket, category: value as any})}
                 >
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Select category" />

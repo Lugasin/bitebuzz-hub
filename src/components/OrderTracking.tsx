@@ -32,53 +32,32 @@ const OrderTracking: React.FC<{ orderId: string }> = ({ orderId }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Set up WebSocket connection for real-time updates
-    const ws = new WebSocket(`ws://localhost:5000/orders/${orderId}/track`);
+    // Simulate WebSocket connection for real-time updates
+    const intervalId = setInterval(() => {
+      fetchOrder();
+    }, 30000); // Update every 30 seconds
     
-    ws.onopen = () => {
-      console.log('WebSocket connection established');
-    };
-    
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      
-      if (message.type === 'ORDER_UPDATE') {
-        setOrder(prevOrder => ({
-          ...prevOrder!,
-          ...message.data
-        }));
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setError('Failed to establish real-time connection');
-    };
-    
-    // Clean up WebSocket on unmount
-    return () => {
-      ws.close();
-    };
+    return () => clearInterval(intervalId);
   }, [orderId]);
 
   // Fetch initial order data
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        setLoading(true);
-        const response = await apiService.get(`/orders/${orderId}/track`);
-        setOrder(response.data);
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching order:', error);
-        setError('Failed to fetch order details');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchOrder();
   }, [orderId]);
+
+  const fetchOrder = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.get(`/orders/${orderId}/track`);
+      setOrder(response.data);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      setError('Failed to fetch order details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString([], {
@@ -89,15 +68,15 @@ const OrderTracking: React.FC<{ orderId: string }> = ({ orderId }) => {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return 'default';
-      case 'confirmed': return 'info';
-      case 'preparing': return 'info';
-      case 'ready': return 'warning';
-      case 'picked_up': return 'warning';
-      case 'on_the_way': return 'warning';
-      case 'delivered': return 'success';
-      case 'cancelled': return 'destructive';
-      default: return 'default';
+      case 'pending': return "default";
+      case 'confirmed': return "default";
+      case 'preparing': return "default";
+      case 'ready': return "default";
+      case 'picked_up': return "default";
+      case 'on_the_way': return "default";
+      case 'delivered': return "default";
+      case 'cancelled': return "default";
+      default: return "default";
     }
   };
 
@@ -126,7 +105,7 @@ const OrderTracking: React.FC<{ orderId: string }> = ({ orderId }) => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">Order #{orderId}</h2>
-          <Badge variant={getStatusColor(order.status) as any}>
+          <Badge>
             {order.status}
           </Badge>
         </div>
@@ -150,7 +129,7 @@ const OrderTracking: React.FC<{ orderId: string }> = ({ orderId }) => {
                 </div>
                 <div>
                   <div className="flex items-center">
-                    <Badge variant={getStatusColor(status.status) as any}>
+                    <Badge>
                       {status.status}
                     </Badge>
                     <span className="ml-2 text-sm text-gray-500">
