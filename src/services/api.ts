@@ -1,5 +1,5 @@
 
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 
 const API_URL = process.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -106,6 +106,14 @@ export const api = {
     addComment: (ticketId: string, data: any) => 
       apiClient.post(`/support/tickets/${ticketId}/comments`, data)
   }
+};
+
+// Create generic methods for components that need them
+export const apiService = {
+  get: (url: string, params?: any) => apiClient.get(url, { params }),
+  post: (url: string, data: any) => apiClient.post(url, data),
+  put: (url: string, data: any) => apiClient.put(url, data),
+  delete: (url: string) => apiClient.delete(url)
 };
 
 export default api;

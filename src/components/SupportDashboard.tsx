@@ -1,30 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Card,
-  Table,
-  Button,
-  Tag,
-  Space,
-  Modal,
-  Form,
-  Input,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
   Select,
-  message,
-  Typography,
-  Avatar,
-  Badge,
-  Tooltip,
-  Popconfirm,
-  Tabs
-} from 'antd';
-import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
-import { formatDate } from '../utils/formatters';
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { apiService } from '../services/api';
 import { UserRole } from '../types/user';
-
-const { Title, Text } = Typography;
-const { TextArea } = Input;
-const { TabPane } = Tabs;
 
 interface SupportTicket {
   id: string;
@@ -53,18 +53,31 @@ const SupportDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isNewTicketModalVisible, setIsNewTicketModalVisible] = useState(false);
-  const [form] = Form.useForm();
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  const [newTicket, setNewTicket] = useState({
+    subject: '',
+    description: '',
+    priority: 'MEDIUM',
+    category: 'OTHER'
+  });
+  
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/support/tickets');
+      const response = await apiService.get('/support/tickets');
       setTickets(response.data);
     } catch (error) {
-      message.error('Failed to fetch support tickets');
+      console.error('Failed to fetch support tickets', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch support tickets',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -72,10 +85,15 @@ const SupportDashboard: React.FC = () => {
 
   const fetchMessages = async (ticketId: string) => {
     try {
-      const response = await api.get(`/support/tickets/${ticketId}`);
+      const response = await apiService.get(`/support/tickets/${ticketId}`);
       setMessages(response.data.messages);
     } catch (error) {
-      message.error('Failed to fetch messages');
+      console.error('Failed to fetch messages', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch messages',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -86,285 +104,384 @@ const SupportDashboard: React.FC = () => {
   const handleTicketClick = (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
     fetchMessages(ticket.id);
-    setIsModalVisible(true);
+    setIsTicketModalOpen(true);
   };
 
-  const handleNewTicket = async (values: any) => {
+  const handleNewTicket = async () => {
     try {
-      await api.post('/support/tickets', values);
-      message.success('Support ticket created successfully');
-      setIsNewTicketModalVisible(false);
+      await apiService.post('/support/tickets', newTicket);
+      
+      toast({
+        title: 'Success',
+        description: 'Support ticket created successfully',
+      });
+      
+      setIsNewTicketModalOpen(false);
+      setNewTicket({
+        subject: '',
+        description: '',
+        priority: 'MEDIUM',
+        category: 'OTHER'
+      });
+      
       fetchTickets();
     } catch (error) {
-      message.error('Failed to create support ticket');
+      console.error('Failed to create support ticket', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create support ticket',
+        variant: 'destructive'
+      });
     }
   };
 
-  const handleSendMessage = async (values: { message: string }) => {
-    if (!selectedTicket) return;
+  const handleSendMessage = async () => {
+    if (!selectedTicket || !newMessage.trim()) return;
 
     try {
-      await api.post(`/support/tickets/${selectedTicket.id}/messages`, {
-        message: values.message
+      await apiService.post(`/support/tickets/${selectedTicket.id}/messages`, {
+        message: newMessage
       });
-      message.success('Message sent successfully');
+      
+      toast({
+        title: 'Success',
+        description: 'Message sent successfully',
+      });
+      
+      setNewMessage('');
       fetchMessages(selectedTicket.id);
     } catch (error) {
-      message.error('Failed to send message');
+      console.error('Failed to send message', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send message',
+        variant: 'destructive'
+      });
     }
   };
 
-  const handleAssignTicket = async (agentId: string, agentName: string) => {
-    if (!selectedTicket) return;
+  const handleAssignTicket = async () => {
+    if (!selectedTicket || !user) return;
 
     try {
-      await api.post(`/support/tickets/${selectedTicket.id}/assign`, {
-        agentId,
-        agentName
+      await apiService.post(`/support/tickets/${selectedTicket.id}/assign`, {
+        agentId: user.id,
       });
-      message.success('Ticket assigned successfully');
+      
+      toast({
+        title: 'Success',
+        description: 'Ticket assigned successfully',
+      });
+      
       fetchTickets();
     } catch (error) {
-      message.error('Failed to assign ticket');
+      console.error('Failed to assign ticket', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to assign ticket',
+        variant: 'destructive'
+      });
     }
   };
 
-  const handleResolveTicket = async (resolution: string) => {
+  const handleResolveTicket = async () => {
     if (!selectedTicket) return;
 
     try {
-      await api.post(`/support/tickets/${selectedTicket.id}/resolve`, {
-        resolution
+      await apiService.post(`/support/tickets/${selectedTicket.id}/resolve`, {
+        resolution: 'Resolved by support agent'
       });
-      message.success('Ticket resolved successfully');
+      
+      toast({
+        title: 'Success',
+        description: 'Ticket resolved successfully',
+      });
+      
+      setIsTicketModalOpen(false);
       fetchTickets();
     } catch (error) {
-      message.error('Failed to resolve ticket');
+      console.error('Failed to resolve ticket', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to resolve ticket',
+        variant: 'destructive'
+      });
     }
   };
 
   const getPriorityColor = (priority: SupportTicket['priority']) => {
     switch (priority) {
-      case 'LOW': return 'green';
-      case 'MEDIUM': return 'blue';
-      case 'HIGH': return 'orange';
-      case 'URGENT': return 'red';
+      case 'LOW': return 'success';
+      case 'MEDIUM': return 'info';
+      case 'HIGH': return 'warning';
+      case 'URGENT': return 'destructive';
       default: return 'default';
     }
   };
 
   const getStatusColor = (status: SupportTicket['status']) => {
     switch (status) {
-      case 'OPEN': return 'blue';
-      case 'IN_PROGRESS': return 'orange';
-      case 'RESOLVED': return 'green';
-      case 'CLOSED': return 'gray';
+      case 'OPEN': return 'info';
+      case 'IN_PROGRESS': return 'warning';
+      case 'RESOLVED': return 'success';
+      case 'CLOSED': return 'default';
       default: return 'default';
     }
   };
 
-  const columns = [
-    {
-      title: 'Subject',
-      dataIndex: 'subject',
-      key: 'subject',
-      render: (text: string, record: SupportTicket) => (
-        <Button type="link" onClick={() => handleTicketClick(record)}>
-          {text}
-        </Button>
-      )
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: SupportTicket['status']) => (
-        <Tag color={getStatusColor(status)}>{status}</Tag>
-      )
-    },
-    {
-      title: 'Priority',
-      dataIndex: 'priority',
-      key: 'priority',
-      render: (priority: SupportTicket['priority']) => (
-        <Tag color={getPriorityColor(priority)}>{priority}</Tag>
-      )
-    },
-    {
-      title: 'Category',
-      dataIndex: 'category',
-      key: 'category'
-    },
-    {
-      title: 'Created At',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => formatDate(date)
-    },
-    {
-      title: 'Assigned To',
-      dataIndex: 'assignedToName',
-      key: 'assignedToName'
-    }
-  ];
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
 
   return (
-    <div>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-        <Col>
-          <Title level={2}>Support Dashboard</Title>
-        </Col>
-        <Col>
-          <Button type="primary" onClick={() => setIsNewTicketModalVisible(true)}>
-            Create New Ticket
-          </Button>
-        </Col>
-      </Row>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Support Dashboard</h1>
+        <Button onClick={() => setIsNewTicketModalOpen(true)}>
+          Create New Ticket
+        </Button>
+      </div>
 
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={tickets}
-          loading={loading}
-          rowKey="id"
-        />
+      <Card className="mb-8">
+        <Tabs defaultValue="all">
+          <TabsList className="w-full border-b">
+            <TabsTrigger value="all">All Tickets</TabsTrigger>
+            <TabsTrigger value="open">Open</TabsTrigger>
+            <TabsTrigger value="inProgress">In Progress</TabsTrigger>
+            <TabsTrigger value="resolved">Resolved</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all" className="p-4">
+            {loading ? (
+              <div className="flex justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : tickets.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2">Subject</th>
+                      <th className="text-left py-2">Status</th>
+                      <th className="text-left py-2">Priority</th>
+                      <th className="text-left py-2">Category</th>
+                      <th className="text-left py-2">Created</th>
+                      <th className="text-left py-2">Assigned To</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets.map(ticket => (
+                      <tr 
+                        key={ticket.id} 
+                        className="hover:bg-gray-50 cursor-pointer border-b"
+                        onClick={() => handleTicketClick(ticket)}
+                      >
+                        <td className="py-3">{ticket.subject}</td>
+                        <td className="py-3">
+                          <Badge variant={getStatusColor(ticket.status) as any}>
+                            {ticket.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3">
+                          <Badge variant={getPriorityColor(ticket.priority) as any}>
+                            {ticket.priority}
+                          </Badge>
+                        </td>
+                        <td className="py-3">{ticket.category}</td>
+                        <td className="py-3">{formatDate(ticket.createdAt)}</td>
+                        <td className="py-3">{ticket.assignedToName || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center p-8 text-gray-500">
+                No tickets found
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Other tab contents would filter the tickets by status */}
+          <TabsContent value="open" className="p-4">
+            {/* Similar content to "all" but filtered */}
+          </TabsContent>
+          <TabsContent value="inProgress" className="p-4">
+            {/* Similar content to "all" but filtered */}
+          </TabsContent>
+          <TabsContent value="resolved" className="p-4">
+            {/* Similar content to "all" but filtered */}
+          </TabsContent>
+        </Tabs>
       </Card>
 
-      <Modal
-        title="Support Ticket"
-        visible={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
-        footer={null}
-        width={800}
-      >
-        {selectedTicket && (
-          <>
-            <Card>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Title level={4}>{selectedTicket.subject}</Title>
-                <Space>
-                  <Tag color={getStatusColor(selectedTicket.status)}>
-                    {selectedTicket.status}
-                  </Tag>
-                  <Tag color={getPriorityColor(selectedTicket.priority)}>
-                    {selectedTicket.priority}
-                  </Tag>
-                  <Tag>{selectedTicket.category}</Tag>
-                </Space>
-                <Text>Created by: {selectedTicket.userName}</Text>
-                <Text>Email: {selectedTicket.userEmail}</Text>
-                <Text>Created: {formatDate(selectedTicket.createdAt)}</Text>
-              </Space>
-            </Card>
-
-            <Card title="Messages" style={{ marginTop: 16 }}>
-              <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                {messages.map((msg) => (
-                  <div key={msg.id} style={{ marginBottom: 16 }}>
-                    <Space>
-                      <Avatar>{msg.userName[0]}</Avatar>
-                      <div>
-                        <Text strong>{msg.userName}</Text>
-                        <Text type="secondary" style={{ marginLeft: 8 }}>
-                          {formatDate(msg.createdAt)}
-                        </Text>
-                        <div>{msg.message}</div>
-                      </div>
-                    </Space>
+      {/* Ticket Detail Modal */}
+      <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
+        <DialogContent className="max-w-3xl">
+          {selectedTicket && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedTicket.subject}</DialogTitle>
+                <DialogDescription>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Badge variant={getStatusColor(selectedTicket.status) as any}>
+                      {selectedTicket.status}
+                    </Badge>
+                    <Badge variant={getPriorityColor(selectedTicket.priority) as any}>
+                      {selectedTicket.priority}
+                    </Badge>
+                    <Badge variant="outline">{selectedTicket.category}</Badge>
                   </div>
-                ))}
+                  <div className="mt-2 text-sm">
+                    <p>Created by: {selectedTicket.userName}</p>
+                    <p>Email: {selectedTicket.userEmail}</p>
+                    <p>Created: {formatDate(selectedTicket.createdAt)}</p>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
+                <h3 className="font-semibold mb-2">Messages</h3>
+                {messages.length > 0 ? (
+                  <div className="space-y-4">
+                    {messages.map((msg) => (
+                      <div key={msg.id} className="flex items-start gap-3">
+                        <Avatar>
+                          <span>{msg.userName[0]}</span>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{msg.userName}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {msg.userRole}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {formatDate(msg.createdAt)}
+                            </span>
+                          </div>
+                          <p className="mt-1">{msg.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No messages yet</p>
+                )}
               </div>
-
-              <Form onFinish={handleSendMessage} style={{ marginTop: 16 }}>
-                <Form.Item name="message" rules={[{ required: true }]}>
-                  <TextArea rows={4} placeholder="Type your message..." />
-                </Form.Item>
-                <Form.Item>
-                  <Button type="primary" htmlType="submit">
-                    Send Message
-                  </Button>
-                </Form.Item>
-              </Form>
-            </Card>
-
-            {['ADMIN', 'SUPPORT_MANAGER'].includes(user?.role || '') && (
-              <Card title="Actions" style={{ marginTop: 16 }}>
-                <Space>
+              
+              <div className="space-y-2">
+                <Textarea 
+                  placeholder="Type your message..." 
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                />
+                <Button onClick={handleSendMessage}>
+                  Send Message
+                </Button>
+              </div>
+              
+              {user?.role === 'admin' || user?.role === 'support' ? (
+                <DialogFooter className="flex-col sm:flex-row gap-2">
                   <Button
-                    type="primary"
-                    onClick={() => handleAssignTicket(user?.id || '', user?.name || '')}
+                    variant="outline"
+                    onClick={handleAssignTicket}
                   >
                     Assign to Me
                   </Button>
                   <Button
-                    type="primary"
-                    danger
-                    onClick={() => handleResolveTicket('Resolved by support agent')}
+                    variant="destructive"
+                    onClick={handleResolveTicket}
                   >
                     Resolve Ticket
                   </Button>
-                </Space>
-              </Card>
-            )}
-          </>
-        )}
-      </Modal>
+                </DialogFooter>
+              ) : null}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
-      <Modal
-        title="Create New Support Ticket"
-        visible={isNewTicketModalVisible}
-        onCancel={() => setIsNewTicketModalVisible(false)}
-        footer={null}
-      >
-        <Form form={form} onFinish={handleNewTicket} layout="vertical">
-          <Form.Item
-            name="subject"
-            label="Subject"
-            rules={[{ required: true }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[{ required: true }]}
-          >
-            <TextArea rows={4} />
-          </Form.Item>
-          <Form.Item
-            name="priority"
-            label="Priority"
-            rules={[{ required: true }]}
-          >
-            <Select>
-              <Select.Option value="LOW">Low</Select.Option>
-              <Select.Option value="MEDIUM">Medium</Select.Option>
-              <Select.Option value="HIGH">High</Select.Option>
-              <Select.Option value="URGENT">Urgent</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true }]}
-          >
-            <Select>
-              <Select.Option value="ORDER">Order</Select.Option>
-              <Select.Option value="PAYMENT">Payment</Select.Option>
-              <Select.Option value="DELIVERY">Delivery</Select.Option>
-              <Select.Option value="ACCOUNT">Account</Select.Option>
-              <Select.Option value="OTHER">Other</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit">
-              Create Ticket
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
+      {/* New Ticket Modal */}
+      <Dialog open={isNewTicketModalOpen} onOpenChange={setIsNewTicketModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Support Ticket</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="subject" className="text-sm font-medium">Subject</label>
+              <Input
+                id="subject"
+                value={newTicket.subject}
+                onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="description" className="text-sm font-medium">Description</label>
+              <Textarea
+                id="description"
+                rows={4}
+                value={newTicket.description}
+                onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="priority" className="text-sm font-medium">Priority</label>
+                <Select
+                  value={newTicket.priority}
+                  onValueChange={(value) => setNewTicket({...newTicket, priority: value as any})}
+                >
+                  <SelectTrigger id="priority">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">Low</SelectItem>
+                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                    <SelectItem value="URGENT">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="category" className="text-sm font-medium">Category</label>
+                <Select
+                  value={newTicket.category}
+                  onValueChange={(value) => setNewTicket({...newTicket, category: value as any})}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ORDER">Order</SelectItem>
+                    <SelectItem value="PAYMENT">Payment</SelectItem>
+                    <SelectItem value="DELIVERY">Delivery</SelectItem>
+                    <SelectItem value="ACCOUNT">Account</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={handleNewTicket}>Create Ticket</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-export default SupportDashboard; 
+export default SupportDashboard;

@@ -1,113 +1,82 @@
-import { Router } from 'express';
+
+import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 import { z } from 'zod';
-import {
-  generateMealPlan,
-  updateInventory,
-  getInventoryAnalytics,
-  DietPreference
+import { 
+  mealPlanningService,
+  DietPreference 
 } from '../services/mealPlanningService';
 
-const router = Router();
+const router = express.Router();
 
-// Validation schemas
-const dietPreferenceSchema = z.object({
-  type: z.enum(['VEGETARIAN', 'VEGAN', 'KETO', 'PALEO', 'GLUTEN_FREE', 'DAIRY_FREE', 'CUSTOM']),
-  restrictions: z.array(z.string()),
-  allergies: z.array(z.string()),
-  preferredCuisines: z.array(z.string()),
-  calorieTarget: z.number().min(0),
-  proteinTarget: z.number().min(0),
-  carbTarget: z.number().min(0),
-  fatTarget: z.number().min(0)
-});
-
-const generateMealPlanSchema = z.object({
+// Schema for generating a meal plan
+const mealPlanSchema = z.object({
   body: z.object({
-    dietPreference: dietPreferenceSchema,
-    duration: z.number().min(1).max(30) // Max 30 days
+    dietPreference: z.object({
+      type: z.string(),
+      restrictions: z.array(z.string()).optional().default([]),
+      allergies: z.array(z.string()).optional().default([]),
+      preferredCuisines: z.array(z.string()).optional().default([]),
+      calorieTarget: z.number().optional().default(2000),
+      proteinTarget: z.number().optional().default(50),
+      carbTarget: z.number().optional().default(250),
+      fatTarget: z.number().optional().default(70)
+    }),
+    duration: z.number().min(1).max(30)
   })
 });
 
-const updateInventorySchema = z.object({
-  body: z.object({
-    updates: z.record(z.string(), z.object({
-      quantity: z.number().min(0),
-      action: z.enum(['ADD', 'REMOVE'])
-    }))
-  })
-});
-
-const inventoryAnalyticsSchema = z.object({
-  query: z.object({
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-  })
-});
-
-// Generate meal plan
+// Generate a meal plan
 router.post(
   '/meal-plan',
   authenticate,
-  validateRequest(generateMealPlanSchema),
+  validateRequest(mealPlanSchema),
   async (req, res) => {
     try {
-      const mealPlan = await generateMealPlan(
-        req.user.id,
-        req.body.dietPreference,
-        req.body.duration
+      const { dietPreference, duration } = req.body;
+      const userId = req.user.id;
+
+      const mealPlan = await mealPlanningService.generateMealPlan(
+        userId,
+        dietPreference as DietPreference,
+        duration
       );
-      res.json(mealPlan);
+
+      return res.status(200).json(mealPlan);
     } catch (error) {
-      console.error('Generate meal plan error:', error);
-      res.status(500).json({ error: 'Failed to generate meal plan' });
+      console.error('Error generating meal plan:', error);
+      return res.status(500).json({
+        message: 'Failed to generate meal plan'
+      });
     }
   }
 );
 
-// Update inventory
-router.post(
-  '/inventory',
-  authenticate,
-  validateRequest(updateInventorySchema),
-  async (req, res) => {
-    try {
-      if (req.user.role !== 'RESTAURANT_AGENT' && req.user.role !== 'ADMIN') {
-        return res.status(403).json({ error: 'Unauthorized to update inventory' });
-      }
-
-      await updateInventory(req.user.restaurantId, req.body.updates);
-      res.json({ message: 'Inventory updated successfully' });
-    } catch (error) {
-      console.error('Update inventory error:', error);
-      res.status(500).json({ error: 'Failed to update inventory' });
-    }
-  }
-);
-
-// Get inventory analytics
+// Get current meal plan
 router.get(
-  '/inventory/analytics',
+  '/meal-plan',
   authenticate,
-  validateRequest(inventoryAnalyticsSchema),
   async (req, res) => {
     try {
-      if (req.user.role !== 'RESTAURANT_AGENT' && req.user.role !== 'ADMIN') {
-        return res.status(403).json({ error: 'Unauthorized to view inventory analytics' });
+      const userId = req.user.id;
+
+      const mealPlan = await mealPlanningService.getMealPlan(userId);
+
+      if (!mealPlan) {
+        return res.status(404).json({
+          message: 'No meal plan found'
+        });
       }
 
-      const analytics = await getInventoryAnalytics(
-        req.user.restaurantId,
-        new Date(req.query.startDate as string),
-        new Date(req.query.endDate as string)
-      );
-      res.json(analytics);
+      return res.status(200).json(mealPlan);
     } catch (error) {
-      console.error('Get inventory analytics error:', error);
-      res.status(500).json({ error: 'Failed to fetch inventory analytics' });
+      console.error('Error fetching meal plan:', error);
+      return res.status(500).json({
+        message: 'Failed to fetch meal plan'
+      });
     }
   }
 );
 
-export default router; 
+export default router;

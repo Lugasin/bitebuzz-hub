@@ -20,10 +20,69 @@ interface CourierStatusUpdate {
   status?: string;
 }
 
+interface Order {
+  id: number;
+  restaurantLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  deliveryLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  estimatedPreparationTime: number;
+}
+
 /**
  * Service for handling courier-related operations
  */
-export class CourierService {
+class CourierService {
+  /**
+   * Find the best courier for an order
+   * @param {Order} order - The order to assign a courier to
+   * @returns {Promise<number | null>} The ID of the best courier, or null if none available
+   */
+  async findBestCourier(order: Order): Promise<number | null> {
+    try {
+      // Find available couriers
+      const availableCouriers = await dbPool.query<{ id: number; rating: number; longitude: number; latitude: number }>(
+        `SELECT id, rating, longitude, latitude FROM users 
+         WHERE role = 'delivery' AND is_available = true`
+      );
+      
+      if (!availableCouriers.length) {
+        return null;
+      }
+      
+      // Calculate scores for each courier based on rating, distance, etc.
+      // This is a simplified algorithm - real-world would be more complex
+      const scoredCouriers = availableCouriers.map(courier => {
+        // Calculate distance from courier to restaurant (simplified)
+        const distance = Math.sqrt(
+          Math.pow(courier.longitude - order.restaurantLocation.longitude, 2) + 
+          Math.pow(courier.latitude - order.restaurantLocation.latitude, 2)
+        );
+        
+        // Score is weighted: rating is 40%, distance is 60% (lower is better)
+        const score = (courier.rating * 0.4) + ((1 / distance) * 0.6);
+        
+        return {
+          id: courier.id,
+          score
+        };
+      });
+      
+      // Sort by score, highest first
+      scoredCouriers.sort((a, b) => b.score - a.score);
+      
+      // Return the best courier's ID
+      return scoredCouriers[0]?.id || null;
+    } catch (error) {
+      console.error("Error finding best courier:", error);
+      return null;
+    }
+  }
+
   /**
    * Update a courier's location
    * @param {number} courierId - The courier's ID
@@ -73,40 +132,24 @@ export class CourierService {
   /**
    * Assign a courier to an order
    * @param {number} orderId - The order ID
-   * @returns {Promise<AssignCourierResult>} The assignment result
+   * @param {number} courierId - The courier ID
+   * @returns {Promise<boolean>} Whether the assignment was successful
    */
-  async assignCourier(orderId: number): Promise<AssignCourierResult> {
+  async assignCourier(orderId: number, courierId: number): Promise<boolean> {
     try {
-      // Find available couriers
-      const availableCouriers = await dbPool.query(
-        `SELECT id, latitude, longitude FROM users 
-         WHERE role = 'delivery' AND is_available = true 
-         ORDER BY RAND() LIMIT 1`
-      );
-      
-      if (!availableCouriers.length) {
-        throw new Error("No available couriers found");
-      }
-      
-      const courier = availableCouriers[0];
-      
       // Assign courier to order
       await dbPool.query(
         `UPDATE deliveries SET courier_id = ?, status = 'assigned' WHERE order_id = ?`,
-        [courier.id, orderId]
+        [courierId, orderId]
       );
       
       // Update courier availability
       await dbPool.query(
         `UPDATE users SET is_available = false WHERE id = ?`,
-        [courier.id]
+        [courierId]
       );
       
-      return {
-        courierId: courier.id,
-        orderId,
-        status: 'assigned'
-      };
+      return true;
     } catch (error) {
       console.error("Error assigning courier:", error);
       throw new Error(`Failed to assign courier: ${(error as Error).message}`);
@@ -141,4 +184,6 @@ export class CourierService {
   }
 }
 
-export default new CourierService();
+// Export a singleton instance
+export const courierService = new CourierService();
+export default courierService;

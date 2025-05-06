@@ -32,7 +32,7 @@ beforeEach(async () => {
 });
 
 // Mock the database query method for testing
-jest.spyOn(dbPool, 'query').mockImplementation((query, params) => {
+jest.spyOn(dbPool, 'query').mockImplementation((query: string, params?: any[]) => {
   if (query.includes('SELECT * FROM users WHERE id = ?')) {
     return Promise.resolve([
       { 

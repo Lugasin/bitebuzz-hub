@@ -1,10 +1,67 @@
-import React from 'react';
-import { Typography, Button, Row, Col, Card, Carousel, Image, Space, Rate } from 'antd';
-import { ArrowRightOutlined, FireOutlined, StarOutlined, ClockCircleOutlined } from '@ant-design/icons';
-import { MenuItem, ZAMBIAN_CATEGORIES } from '../services/menuService';
-import { useRouter } from 'next/router';
 
-const { Title, Text } = Typography;
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  ArrowRight, 
+  Clock, 
+  Star, 
+  Flame
+} from 'lucide-react';
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  rating: number;
+  preparationTime: number;
+  restaurantName?: string;
+  restaurantRating?: number;
+  dietaryInfo: {
+    isVegetarian: boolean;
+    isVegan: boolean;
+    isGlutenFree: boolean;
+    isSpicy: boolean;
+  };
+}
+
+interface Category {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+}
+
+export const ZAMBIAN_CATEGORIES: Category[] = [
+  {
+    id: 'traditional',
+    name: 'Traditional Zambian',
+    description: 'Classic Zambian dishes',
+    imageUrl: '/images/traditional.jpg'
+  },
+  {
+    id: 'fusion',
+    name: 'Fusion',
+    description: 'Modern takes on classic dishes',
+    imageUrl: '/images/fusion.jpg'
+  },
+  {
+    id: 'street-food',
+    name: 'Street Food',
+    description: 'Popular street eats',
+    imageUrl: '/images/street-food.jpg'
+  },
+  {
+    id: 'vegetarian',
+    name: 'Vegetarian',
+    description: 'Plant-based Zambian cuisine',
+    imageUrl: '/images/vegetarian.jpg'
+  }
+];
 
 interface LandingPageProps {
   featuredItems: MenuItem[];
@@ -12,213 +69,160 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ featuredItems, topRestaurants }) => {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleCategoryClick = (categoryId: string) => {
-    router.push(`/menu?category=${categoryId}`);
+    navigate(`/menu?category=${categoryId}`);
   };
 
   return (
     <div className="landing-page">
       {/* Hero Section */}
-      <div className="hero-section">
-        <Carousel autoplay className="hero-carousel">
+      <div className="relative h-[600px] mb-12">
+        <div className="carousel h-full">
           {featuredItems.map(item => (
-            <div key={item.id} className="hero-slide">
-              <Image
+            <div key={item.id} className="relative h-[600px]">
+              <img
                 src={item.imageUrl}
                 alt={item.name}
-                preview={false}
-                className="hero-image"
+                className="w-full h-full object-cover"
               />
-              <div className="hero-content">
-                <Title level={1}>{item.name}</Title>
-                <Text className="hero-description">{item.description}</Text>
-                <Button type="primary" size="large" icon={<ArrowRightOutlined />}>
-                  Order Now
+              <div className="absolute bottom-0 left-0 right-0 p-12 bg-gradient-to-t from-black/80 to-transparent text-white">
+                <h1 className="text-4xl font-bold">{item.name}</h1>
+                <p className="text-lg my-4">{item.description}</p>
+                <Button onClick={() => navigate(`/restaurant/${item.id}`)}>
+                  Order Now <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             </div>
           ))}
-        </Carousel>
+        </div>
       </div>
 
       {/* Categories Section */}
-      <div className="section categories-section">
-        <Title level={2}>Explore Zambian Cuisine</Title>
-        <Row gutter={[24, 24]}>
+      <div className="py-12 px-6 bg-gray-50">
+        <h2 className="text-3xl font-bold mb-6">Explore Zambian Cuisine</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {ZAMBIAN_CATEGORIES.map(category => (
-            <Col key={category.id} xs={24} sm={12} md={8} lg={6}>
-              <Card
-                hoverable
-                cover={
-                  <Image
-                    src={category.imageUrl}
-                    alt={category.name}
-                    height={200}
-                    preview={false}
-                  />
-                }
-                onClick={() => handleCategoryClick(category.id)}
-              >
-                <Card.Meta
-                  title={category.name}
-                  description={category.description}
+            <Card 
+              key={category.id} 
+              className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
+              onClick={() => handleCategoryClick(category.id)}
+            >
+              <div className="h-48 overflow-hidden">
+                <img
+                  src={category.imageUrl}
+                  alt={category.name}
+                  className="w-full h-full object-cover"
                 />
-              </Card>
-            </Col>
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold">{category.name}</h3>
+                <p className="text-gray-500">{category.description}</p>
+              </div>
+            </Card>
           ))}
-        </Row>
+        </div>
       </div>
 
       {/* Featured Items */}
-      <div className="section featured-section">
-        <Title level={2}>
-          <FireOutlined /> Popular Items
-        </Title>
-        <Row gutter={[24, 24]}>
+      <div className="py-12 px-6">
+        <h2 className="text-3xl font-bold mb-6">
+          <Flame className="inline-block mr-2 h-6 w-6 text-orange-500" /> Popular Items
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {featuredItems.map(item => (
-            <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
-              <Card
-                hoverable
-                cover={
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.name}
-                    height={200}
-                    preview={false}
-                  />
-                }
-              >
-                <Card.Meta
-                  title={
-                    <Space direction="vertical" size="small">
-                      <Text strong>{item.name}</Text>
-                      <Rate disabled defaultValue={item.rating} />
-                    </Space>
-                  }
-                  description={
-                    <Space direction="vertical" size="small">
-                      <Text>{item.description}</Text>
-                      <Text strong>K{item.price.toFixed(2)}</Text>
-                      <Space>
-                        <Tag icon={<ClockCircleOutlined />}>{item.preparationTime} min</Tag>
-                        {item.dietaryInfo.isVegetarian && <Tag color="green">Vegetarian</Tag>}
-                        {item.dietaryInfo.isVegan && <Tag color="green">Vegan</Tag>}
-                        {item.dietaryInfo.isGlutenFree && <Tag color="blue">Gluten Free</Tag>}
-                        {item.dietaryInfo.isSpicy && <Tag color="red">Spicy</Tag>}
-                      </Space>
-                    </Space>
-                  }
+            <Card key={item.id} className="hover:shadow-lg transition-shadow">
+              <div className="h-48 overflow-hidden">
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
                 />
-              </Card>
-            </Col>
+              </div>
+              <div className="p-4">
+                <div>
+                  <h3 className="font-semibold">{item.name}</h3>
+                  <div className="flex items-center mt-1">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    <span className="ml-1">{item.rating}</span>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 line-clamp-2">{item.description}</p>
+                  <p className="font-bold mt-2">K{item.price.toFixed(2)}</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {item.preparationTime} min
+                    </Badge>
+                    {item.dietaryInfo.isVegetarian && (
+                      <Badge variant="success">Vegetarian</Badge>
+                    )}
+                    {item.dietaryInfo.isVegan && (
+                      <Badge variant="success">Vegan</Badge>
+                    )}
+                    {item.dietaryInfo.isGlutenFree && (
+                      <Badge variant="info">Gluten Free</Badge>
+                    )}
+                    {item.dietaryInfo.isSpicy && (
+                      <Badge variant="warning">Spicy</Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
           ))}
-        </Row>
+        </div>
       </div>
 
       {/* Top Restaurants */}
-      <div className="section restaurants-section">
-        <Title level={2}>
-          <StarOutlined /> Top Restaurants
-        </Title>
-        <Row gutter={[24, 24]}>
+      <div className="py-12 px-6 bg-gray-50">
+        <h2 className="text-3xl font-bold mb-6">
+          <Star className="inline-block mr-2 h-6 w-6 text-yellow-500" /> Top Restaurants
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {topRestaurants.map(restaurant => (
-            <Col key={restaurant.id} xs={24} sm={12} md={8} lg={6}>
-              <Card
-                hoverable
-                cover={
-                  <Image
-                    src={restaurant.imageUrl}
-                    alt={restaurant.restaurantName}
-                    height={200}
-                    preview={false}
-                  />
-                }
-              >
-                <Card.Meta
-                  title={
-                    <Space direction="vertical" size="small">
-                      <Text strong>{restaurant.restaurantName}</Text>
-                      <Rate disabled defaultValue={restaurant.restaurantRating} />
-                    </Space>
-                  }
-                  description={
-                    <Space direction="vertical" size="small">
-                      <Text>{restaurant.description}</Text>
-                      <Text type="secondary">Average delivery time: {restaurant.preparationTime} min</Text>
-                    </Space>
-                  }
+            <Card key={restaurant.id} className="hover:shadow-lg transition-shadow">
+              <div className="h-48 overflow-hidden">
+                <img
+                  src={restaurant.imageUrl}
+                  alt={restaurant.restaurantName}
+                  className="w-full h-full object-cover"
                 />
-              </Card>
-            </Col>
+              </div>
+              <div className="p-4">
+                <div>
+                  <h3 className="font-semibold">{restaurant.restaurantName}</h3>
+                  <div className="flex items-center mt-1">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    <span className="ml-1">{restaurant.restaurantRating}</span>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 line-clamp-2">{restaurant.description}</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Average delivery time: {restaurant.preparationTime} min
+                  </p>
+                </div>
+              </div>
+            </Card>
           ))}
-        </Row>
+        </div>
       </div>
 
       {/* Call to Action */}
-      <div className="section cta-section">
-        <Card className="cta-card">
-          <Title level={2}>Ready to Order?</Title>
-          <Text>Discover the best of Zambian cuisine at your fingertips</Text>
-          <Button type="primary" size="large" onClick={() => router.push('/menu')}>
+      <div className="py-12 px-6 text-center">
+        <Card className="max-w-2xl mx-auto p-12">
+          <h2 className="text-3xl font-bold">Ready to Order?</h2>
+          <p className="my-4">Discover the best of Zambian cuisine at your fingertips</p>
+          <Button size="lg" onClick={() => navigate('/menu')}>
             Browse Menu
           </Button>
         </Card>
       </div>
-
-      <style jsx>{`
-        .landing-page {
-          padding: 0;
-        }
-        .hero-section {
-          position: relative;
-          height: 600px;
-          margin-bottom: 48px;
-        }
-        .hero-carousel {
-          height: 100%;
-        }
-        .hero-slide {
-          position: relative;
-          height: 600px;
-        }
-        .hero-image {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-        .hero-content {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          padding: 48px;
-          background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-          color: white;
-        }
-        .hero-description {
-          font-size: 18px;
-          margin: 16px 0;
-          display: block;
-        }
-        .section {
-          padding: 48px 24px;
-        }
-        .categories-section {
-          background: #f5f5f5;
-        }
-        .cta-section {
-          text-align: center;
-        }
-        .cta-card {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 48px;
-        }
-      `}</style>
     </div>
   );
 };
 
-export default LandingPage; 
+export default LandingPage;

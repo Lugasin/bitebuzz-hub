@@ -1,225 +1,163 @@
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { 
-  User, 
-  signOut, 
-  signInWithPopup, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  onAuthStateChanged,
-  updateProfile
-} from "firebase/auth";
-import { auth, googleProvider, facebookProvider } from "@/lib/firebase";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useToast } from "@/components/ui/use-toast";
-
-type UserRole = "customer" | "vendor" | "delivery" | "admin" | "superadmin" | "guest";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User, UserRole } from '../types/user';
+import api from '../services/api';
 
 interface AuthContextType {
-  currentUser: User | null;
-  userRole: UserRole;
-  isLoading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signInWithFacebook: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  user: User | null;
+  userRole: UserRole | null;
+  isLoading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (userData: Partial<User>) => Promise<void>;
+  logout: () => void;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (userData: Partial<User>) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  isAuthenticated: false,
+  user: null,
+  userRole: null,
+  isLoading: true,
+  error: null,
+  login: async () => {},
+  register: async () => {},
+  logout: () => {},
+  resetPassword: async () => {},
+  updateProfile: async () => {}
+});
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>("guest");
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { toast } = useToast();
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists()) {
-            setUserRole(userDoc.data().role as UserRole);
-          } else {
-            setUserRole("customer"); // Default role
-          }
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          setUserRole("customer");
-        }
-      } else {
-        setUserRole("guest");
-      }
-      
-      setIsLoading(false);
-    });
-
-    return unsubscribe;
+    checkAuthStatus();
   }, []);
 
-  const createUserProfile = async (user: User, name: string, role: UserRole) => {
-    const userRef = doc(db, "users", user.uid);
-    
-    // Update display name if provided
-    if (name) {
-      await updateProfile(user, {
-        displayName: name,
-      });
-    }
-    
-    // Check if user document already exists
-    const userSnapshot = await getDoc(userRef);
-    
-    if (!userSnapshot.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        displayName: name || user.displayName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        photoURL: user.photoURL,
-        role: role,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+  const checkAuthStatus = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Validate token with backend
+      const response = await api.auth.validateToken(token);
+      setUser(response.data.user);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      localStorage.removeItem('token');
+      setUser(null);
+      setError('Authentication session expired');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const signInWithGoogle = async () => {
+  const login = async (email: string, password: string) => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await createUserProfile(result.user, result.user.displayName || "", "customer");
-      toast({
-        title: "Success",
-        description: "Signed in with Google successfully!",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign in with Google",
-      });
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await api.auth.login(email, password);
+      
+      localStorage.setItem('token', response.data.token);
+      setUser(response.data.user);
+    } catch (error) {
+      console.error('Login failed:', error);
+      setError('Invalid email or password');
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const signInWithFacebook = async () => {
+  const register = async (userData: Partial<User>) => {
     try {
-      const result = await signInWithPopup(auth, facebookProvider);
-      await createUserProfile(result.user, result.user.displayName || "", "customer");
-      toast({
-        title: "Success",
-        description: "Signed in with Facebook successfully!",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign in with Facebook",
-      });
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await api.auth.register(userData);
+      
+      localStorage.setItem('token', response.data.token);
+      setUser(response.data.user);
+    } catch (error) {
+      console.error('Registration failed:', error);
+      setError('Registration failed. Please try again.');
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const signInWithEmail = async (email: string, password: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully signed in.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign in",
-      });
-      throw error;
-    }
-  };
-
-  const signUpWithEmail = async (email: string, password: string, name: string, role: UserRole) => {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(result.user, name, role);
-      toast({
-        title: "Account created",
-        description: "Your account has been created successfully!",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to create account",
-      });
-      throw error;
-    }
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
   };
 
   const resetPassword = async (email: string) => {
     try {
-      await sendPasswordResetEmail(auth, email);
-      toast({
-        title: "Password reset email sent",
-        description: "Check your email for password reset instructions.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to send password reset email",
-      });
+      setIsLoading(true);
+      setError(null);
+      
+      await api.auth.forgotPassword(email);
+    } catch (error) {
+      console.error('Password reset failed:', error);
+      setError('Password reset failed. Please try again.');
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = async () => {
+  const updateProfile = async (userData: Partial<User>) => {
     try {
-      await signOut(auth);
-      toast({
-        title: "Signed out",
-        description: "You've been signed out successfully.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign out",
-      });
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await api.users.updateProfile(userData);
+      setUser(response.data);
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      setError('Failed to update profile. Please try again.');
       throw error;
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const value: AuthContextType = {
-    currentUser,
-    userRole,
-    isLoading,
-    signInWithGoogle,
-    signInWithFacebook,
-    signInWithEmail,
-    signUpWithEmail,
-    resetPassword,
-    logout,
-    isAuthenticated: !!currentUser
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider 
+      value={{ 
+        isAuthenticated: !!user,
+        user,
+        userRole: user?.role || null,
+        isLoading,
+        error,
+        login,
+        register,
+        logout,
+        resetPassword,
+        updateProfile
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
+
+export default AuthContext;
